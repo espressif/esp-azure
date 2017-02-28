@@ -1,0 +1,3 @@
+[submodule "components/azure_iot/azure"]
+	path = components/azure_iot/azure
+	url = https://github.com/Azure/azure-iot-sdk-c.git
