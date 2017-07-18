@@ -8,7 +8,7 @@
 - [Part 5: Result shows](results)
 - [TroubleShoot](troubleshoot)
 
-Introduction
+<span id = "Introduction">Introduction</span>
 ------------------------------
 ###### ESP32 is one of gorgeous ioT device that can interface with other systems to provide Wi-Fi and Bluetooth functionality through the SPI / SDIO or I2C / UART interfaces.for more details, click https://espressif.com/en/products/hardware/esp32/overview
 ###### Azure cloud is one of wonderful cloud that could collect data from lot device or push data to lot device,for more details, click https://www.azure.cn/home/features/iot-hub/
@@ -16,7 +16,7 @@ Introduction
  ##### This page would guide you connecting your device(ESP32 or lot device with ESP32) to Azure by MQTT protocol, and then send data to Azure,receive message from Azure.Main workflow:
  ![ESP32workflow](https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png)https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png
  
- Part 1: Prerequisites
+ <span id = "prerequisites">Part 1: Prerequisites</span>
  ------------------------------
 - **ubuntu environment** for building your demo.
 - **ESP32 device** for running the demo.  
@@ -24,7 +24,7 @@ Introduction
  
  
  
- Part 2: Prepare your iothub
+ <span id = "prepare">Part 2: Prepare your iothub</span>
  ------------------------------
 follow the guide: https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/start_Iothub.docx
 you would get an **iothub login connect string** like that:
@@ -32,7 +32,7 @@ you would get an **iothub login connect string** like that:
 HostName=yourname-ms-lot-hub.azure-devices.cn;SharedAccessKeyName=iothubowner;SharedAccessKey=zMeLQ0JTlZXVcHBVOwRFVmlFtcCz+CtbDpUPBWexbIY=
 ```
 
- Part 3: SDK and Tools Preparation
+ <span id = "tools_prepare">Part 3: SDK and Tools Preparation</span>
  ------------------------------
  #### 3.1 iothub-explorer install
  The iothub-explorer tool enables you to provision, monitor, and delete devices in your IoT hub. It runs on any operating system where Node.js is available.
@@ -72,7 +72,7 @@ keep this **device connect string** in mind.
  follow the guide: http://esp-idf.readthedocs.io/en/latest/get-started/linux-setup.html
  
  
- Part 4: Configuring and building
+ <span id = "config_build">Part 4: Configuring and building</span>
  ------------------------------
 ### 4.1 Update Variables
 [/examples/project_template/user/iothub_client_sample_mqtt.c](#)
@@ -101,7 +101,7 @@ The azure connection string contains Hostname, DeviceId, and SharedAccessKey in 
  - try type command:
    > sudo usermod -a -G dialout $USER
  
-Part 5: Result shows
+<span id = "results">Part 5: Result shows</span>
  ------------------------------
 login iothub-explorer,and monitor events:
 ```
@@ -110,7 +110,7 @@ iothub-explorer monitor-events AirConditionDevice_001 --login 'HostName=yourioth
 -  restart ESP32 after bin had flashed,you would see the ESP32 send data to lothub-explorer by minicom,and iothub-explorer would receive data!
 - At the same time,you can send message to ESP32 by iothub-explorer until you send a quit message
 
- TroubleShoot
+ <span id = "troubleshoot">TroubleShoot</span>
  ------------------------------
  - close some firewall settings
  - build failed,try:
