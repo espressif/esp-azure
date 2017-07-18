@@ -14,13 +14,13 @@ Introduction
 ###### Azure cloud is one of wonderful cloud that could collect data from lot device or push data to lot device,for more details, click https://www.azure.cn/home/features/iot-hub/
  **Aim:**
  ##### This page would guide you connecting your device(ESP32 or lot device with ESP32) to Azure by MQTT protocol, and then send data to Azure,receive message from Azure.Main workflow:
- ![ESP32workflow](#https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png)
+ ![ESP32workflow](https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png)https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png
  
  Part 1: Prerequisites
  ------------------------------
 - **ubuntu environment** for building your demo.
 - **ESP32 device** for running the demo.  
-![ESP32 device](#https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32-DevKitC.png)
+![ESP32 device](https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32-DevKitC.png)https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32-DevKitC.png
  
  
  
