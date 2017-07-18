@@ -14,19 +14,19 @@ Introduction
 ###### Azure cloud is one of wonderful cloud that could collect data from lot device or push data to lot device,for more details, click https://www.azure.cn/home/features/iot-hub/
  **Aim:**
  ##### This page would guide you connecting your device(ESP32 or lot device with ESP32) to Azure by MQTT protocol, and then send data to Azure,receive message from Azure.Main workflow:
- ![ESP32workflow](#https://github.com/ustccw/AzureData/blob/master/ReadMe/ESP32-Azure%20workflow.png)
+ ![ESP32workflow](#https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32AzureWorkflow.png)
  
  Part 1: Prerequisites
  ------------------------------
 - **ubuntu environment** for building your demo.
 - **ESP32 device** for running the demo.  
-![ESP32 device](#https://github.com/ustccw/AzureData/blob/master/Photos/ESP32-DevKitC%E5%B8%83%E5%B1%80.png)
+![ESP32 device](#https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/Photos/ESP32-DevKitC.png)
  
  
  
  Part 2: Prepare your iothub
  ------------------------------
-follow the guide: https://github.com/ustccw/AzureData/blob/master/start_Iothub.docx
+follow the guide: https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/start_Iothub.docx
 you would get an **iothub login connect string** like that:
 ```
 HostName=yourname-ms-lot-hub.azure-devices.cn;SharedAccessKeyName=iothubowner;SharedAccessKey=zMeLQ0JTlZXVcHBVOwRFVmlFtcCz+CtbDpUPBWexbIY=
@@ -51,7 +51,7 @@ $ iothub-explorer -V
 ##### if failed,please click http://thinglabs.io/workshop/esp8266/setup-azure-iot-hub/
   
 ##### after finished:
-then you can use your iothub-explorer to manager your iot-device.click https://github.com/ustccw/AzureData/blob/master/iothub-explorer  
+then you can use your iothub-explorer to manager your iot-device.click https://github.com/ustccw/RepoForShareData/blob/master/Microsoft/AzureData/iothub-explorer  
 
 login with:   **iothub login connect string** that gets from Part 2
 
@@ -69,7 +69,7 @@ keep this **device connect string** in mind.
  this SDK can make ESP32 work well  
 
  #### 3.3 Compiler get
- follow the guide: http://esp-idf.readthedocs.io/en/latest/linux-setup.html
+ follow the guide: http://esp-idf.readthedocs.io/en/latest/get-started/linux-setup.html
  
  
  Part 4: Configuring and building
