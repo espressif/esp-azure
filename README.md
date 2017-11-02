@@ -3,10 +3,10 @@
 - [Introduction](#Introduction)
 - [Part 1: Prerequisites](#prerequisites)
 - [Part 2: Prepare your iothub](#prepare)
-- [Part 3: SDK and Tools Preparation](tools_prepare)
+- [Part 3: SDK and Tools Preparation](#tools_prepare)
 - [Part 4: Configuring and building](#config_build)
-- [Part 5: Result shows](results)
-- [TroubleShoot](troubleshoot)
+- [Part 5: Result shows](#results)
+- [TroubleShoot](#troubleshoot)
 
 <span id = "Introduction">Introduction</span>
 ------------------------------
