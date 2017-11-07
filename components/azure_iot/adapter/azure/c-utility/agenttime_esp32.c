@@ -19,25 +19,35 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "apps/sntp/sntp.h"
 
-static void initialize_sntp(void)
+void initialize_sntp(void)
 {
     printf("Initializing SNTP\n");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
+ //    sntp_setservername(1, "202.112.29.82");        // set sntp server after got ip address, you had better to adjust the sntp server to your area
+ //    sntp_setservername(2, "ntp.sjtu.edu.cn");
+ //    sntp_setservername(3, "0.nettime.pool.ntp.org");
+ //    sntp_setservername(4, "time-b.nist.gov");
+ //    sntp_setservername(5, "time-a.timefreq.bldrdoc.gov");
+ //    sntp_setservername(6, "time-b.timefreq.bldrdoc.gov");
+ //    sntp_setservername(7, "time-c.timefreq.bldrdoc.gov");
+ //    sntp_setservername(8, "utcnist.colorado.edu");
+ //    sntp_setservername(9, "time.nist.gov");
+ //    sntp_setservername(10, "us.pool.ntp.org");
     sntp_init();
 }
 
 static void obtain_time(void)
 {
-    initialize_sntp();
+    //initialize_sntp();
 
     // wait for time to be set
     time_t now = 0;
     struct tm timeinfo = { 0 };
     int retry = 0;
-    const int retry_count = 10;
-    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
-        printf("Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
+
+    while(timeinfo.tm_year < (2016 - 1900) ) {
+        printf("Waiting for system time to be set... tm_year:%d[times:%d]\n", timeinfo.tm_year, ++retry);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);

@@ -10,25 +10,29 @@
 #include "azure_c_shared_utility/tlsio_openssl.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "apps/sntp/sntp.h"
+#include "esp_log.h"
+
 //#include "lwip/apps/sntp_time.h"
 #define TICK_RATE CONFIG_FREERTOS_HZ
 
+static const char* TAG = "platform";
+
 time_t sntp_get_current_timestamp();
+void initialize_sntp(void);
 
 int platform_init(void)
 {
-    printf("Initializing SNTP\n");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    printf("ESP32 sntp init!\n");
-    u32_t ts = 1;
-    while(ts == 0){
-        vTaskDelay(1 * TICK_RATE);
-        time_t sntp_time = sntp_get_current_timestamp();;
-        ts = (u32_t)sntp_time;
+    initialize_sntp();
+    printf("ESP32 sntp inited!\n");
+    time_t now = sntp_get_current_timestamp();
 
-    }
+    char strftime_buf[64];
+    struct tm timeinfo;
+
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
+
     return 0;
 }
 
