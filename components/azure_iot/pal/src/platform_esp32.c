@@ -11,6 +11,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "apps/sntp/sntp.h"
 #include "esp_log.h"
+#include "tlsio_pal.h"
 
 //#include "lwip/apps/sntp_time.h"
 #define TICK_RATE CONFIG_FREERTOS_HZ
@@ -38,8 +39,8 @@ int platform_init(void)
 
 const IO_INTERFACE_DESCRIPTION* platform_get_default_tlsio(void)
 {
-    return tlsio_openssl_get_interface_description();
-	return NULL;
+    return tlsio_pal_get_interface_description();
+    return NULL;
 }
 
 void platform_deinit(void)
