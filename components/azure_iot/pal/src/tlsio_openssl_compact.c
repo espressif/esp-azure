@@ -90,9 +90,11 @@ static void enter_tlsio_error_state(TLS_IO_INSTANCE* tls_io_instance)
 /* Codes_SRS_TLSIO_30_005: [ When the adapter enters TLSIO_STATE_EXT_ERROR it shall call the  on_io_error function and pass the on_io_error_context that were supplied in  tlsio_open . ]*/
 static void enter_open_error_state(TLS_IO_INSTANCE* tls_io_instance)
 {
-    enter_tlsio_error_state(tls_io_instance);
-    // on_open_complete has already been checked for non-NULL
-    tls_io_instance->on_open_complete(tls_io_instance->on_open_complete_context, IO_OPEN_ERROR);
+    // save instance variables in case the framework destroys this object before we exit
+    ON_IO_OPEN_COMPLETE on_open_complete = tls_io_instance->on_open_complete;
+    void* on_open_complete_context = tls_io_instance->on_open_complete_context;
+    enter_tlsio_error_state(tls_io_instance);   
+    on_open_complete(on_open_complete_context, IO_OPEN_ERROR);
 }
 
 // Return true if a message was available to remove
