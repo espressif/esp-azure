@@ -47,3 +47,10 @@ void platform_deinit(void)
 {
       sntp_stop();
 }
+
+STRING_HANDLE platform_get_platform_info(void)
+{
+    // Expected format: "(<runtime name>; <operating system name>; <platform>)"
+
+    return STRING_construct("(native; freertos; esp32)");
+}
