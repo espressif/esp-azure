@@ -11,7 +11,14 @@
 #ifndef SOCKET_ASYNC_OS_H
 #define SOCKET_ASYNC_OS_H
 
+#include "sdkconfig.h"
+
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#include "sys/socket.h"
+#else
 #include "lwip/sockets.h"
+#endif
+
 #include "lwip/netdb.h"
 
 #endif // SOCKET_ASYNC_OS_H

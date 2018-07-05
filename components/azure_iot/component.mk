@@ -4,7 +4,10 @@
  
 # Component configuration in preprocessor defines
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
- 
+
+ifdef CONFIG_TARGET_PLATFORM_ESP8266
+CFLAGS += -DCONFIG_FREERTOS_HZ=100
+endif
  
 COMPONENT_ADD_INCLUDEDIRS := \
 pal \
@@ -28,8 +31,8 @@ azure/c-utility/pal/freertos/threadapi.o \
 azure/c-utility/pal/freertos/tickcounter.o \
 azure/c-utility/pal/tlsio_options.o \
 \
-pal/src/agenttime_esp32.o \
-pal/src/platform_esp32.o \
+pal/src/agenttime_esp.o \
+pal/src/platform_esp.o \
 pal/src/tlsio_openssl_compact.o \
 \
 azure/c-utility/src/xlogging.o \
@@ -64,6 +67,7 @@ azure/c-utility/src/base64.o \
 \
 \
 azure/iothub_client/src/iothub_client_ll.o \
+azure/iothub_client/src/iothub_client_core_ll.o \
 azure/iothub_client/src/iothub_client_ll_uploadtoblob.o \
 azure/iothub_client/src/iothub_client_authorization.o \
 azure/iothub_client/src/iothub_client_retry_control.o \
