@@ -30,7 +30,7 @@ void initialize_sntp(void);
 int platform_init(void)
 {
     initialize_sntp();
-    printf("ESP32 sntp inited!\n");
+    printf("ESP platform sntp inited!\n");
     time_t now = sntp_get_current_timestamp();
 
     char strftime_buf[64];
@@ -58,5 +58,5 @@ STRING_HANDLE platform_get_platform_info(void)
 {
     // Expected format: "(<runtime name>; <operating system name>; <platform>)"
 
-    return STRING_construct("(native; freertos; esp32)");
+    return STRING_construct("(native; freertos; esp platform)");
 }

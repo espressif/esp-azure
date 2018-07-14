@@ -106,7 +106,6 @@ static void SendConfirmationCallback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, v
 void iothub_client_sample_mqtt_run(void)
 {
 	printf("\nFile:%s Compile Time:%s %s\n",__FILE__,__DATE__,__TIME__);
-    //(void)printf("size after iothub_client_sample_mqtt_run starts: %d \n", system_get_free_heap_size());
     IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle;
 
     EVENT_INSTANCE messages[MESSAGE_COUNT];
@@ -117,14 +116,12 @@ void iothub_client_sample_mqtt_run(void)
 
     callbackCounter = 0;
     int receiveContext = 0;
-    //(void)printf("size before platform_init: %d \n", system_get_free_heap_size());
     if (platform_init() != 0)
     {
         (void)printf("Failed to initialize the platform.\r\n");
     }
     else
     {
-        //(void)printf("size before IoTHubClient_LL_CreateFromConnectionString: %d \n", system_get_free_heap_size());
         if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, MQTT_Protocol)) == NULL)
         {
             (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
@@ -132,7 +129,6 @@ void iothub_client_sample_mqtt_run(void)
         else
         {
             bool traceOn = true;
-            //(void)printf("size before IoTHubClient_LL_SetOption: %d \n", system_get_free_heap_size());
             IoTHubClient_LL_SetOption(iotHubClientHandle, "logtrace", &traceOn);
 
 #ifdef MBED_BUILD_TIMESTAMP
@@ -144,7 +140,6 @@ void iothub_client_sample_mqtt_run(void)
 #endif // MBED_BUILD_TIMESTAMP
 
             /* Setting Message call back, so we can receive Commands. */
-            //(void)printf("size before IoTHubClient_LL_SetMessageCallback: %d \n", system_get_free_heap_size());
             if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
             {
                 (void)printf("ERROR: IoTHubClient_LL_SetMessageCallback..........FAILED!\r\n");
@@ -162,7 +157,6 @@ void iothub_client_sample_mqtt_run(void)
                     {
                         sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"AirConditionDevice_001\",\"windSpeed\":%.2f}", avgWindSpeed + (rand() % 4 + 2));
                         printf("Ready to Send String:%s\n",(const char*)msgText);
-                        //(void)printf("size before IoTHubMessage_CreateFromByteArray: %d \n", system_get_free_heap_size());
                         if ((messages[iterator].messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
                         {
                             (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
@@ -170,14 +164,12 @@ void iothub_client_sample_mqtt_run(void)
                         else
                         {
                             messages[iterator].messageTrackingId = iterator;
-                            //(void)printf("size before IoTHubMessage_Properties: %d \n", system_get_free_heap_size());
                             MAP_HANDLE propMap = IoTHubMessage_Properties(messages[iterator].messageHandle);
                             (void)sprintf_s(propText, sizeof(propText), "PropMsg_%zu", iterator);
                             if (Map_AddOrUpdate(propMap, "PropName", propText) != MAP_OK)
                             {
                                 (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
                             }
-                            //(void)printf("free heap size before IoTHubClient_LL_SendEventAsync: %d \n", system_get_free_heap_size());
                             if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, messages[iterator].messageHandle, SendConfirmationCallback, &messages[iterator]) != IOTHUB_CLIENT_OK)
                             {
                                 (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");

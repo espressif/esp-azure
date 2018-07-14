@@ -5,10 +5,6 @@
 # Component configuration in preprocessor defines
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 
-ifdef CONFIG_TARGET_PLATFORM_ESP8266
-CFLAGS += -DCONFIG_FREERTOS_HZ=100
-endif
- 
 COMPONENT_ADD_INCLUDEDIRS := \
 pal \
 pal/inc \
