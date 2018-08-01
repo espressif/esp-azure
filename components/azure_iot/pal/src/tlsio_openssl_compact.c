@@ -650,7 +650,7 @@ static void dowork_poll_open_ssl(TLS_IO_INSTANCE* tls_io_instance)
 
     int connect_result = SSL_connect(tls_io_instance->ssl);
 
-    // The following note applies to the Espressif ESP32 implementation
+    // The following note applies to the Espressif ESP platform implementation
     // of OpenSSL:
     // The manual pages say that 0 is a failure,
     // but by experiment, 0 is the success result, at least when using

@@ -6,12 +6,13 @@
 
 // For lwIP systems
 // Tested with:
-// ESP32
+// ESP platform
 
 #ifndef SOCKET_ASYNC_OS_H
 #define SOCKET_ASYNC_OS_H
 
-#include "lwip/sockets.h"
-#include "lwip/netdb.h"
+#include "sdkconfig.h"
+#include <sys/socket.h>
+#include <netdb.h>
 
 #endif // SOCKET_ASYNC_OS_H

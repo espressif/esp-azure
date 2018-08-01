@@ -4,9 +4,9 @@
 //This file pulls in OS-specific header files to allow compilation of socket_async.c under
 // most OS's except for Windows.
 
-// For ESP32 lwIP systems which use the ESP-IDF's non-standard lwIP include structure
+// For ESP platform lwIP systems which use the ESP-IDF's non-standard lwIP include structure
 // Tested with:
-// ESP32
+// ESP platform
 
 #ifndef LWIP_SNTP_OS_H
 #define LWIP_SNTP_OS_H

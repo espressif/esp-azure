@@ -9,9 +9,15 @@
 #include "azure_c_shared_utility/xio.h"
 #include "azure_c_shared_utility/tlsio_openssl.h"
 #include "azure_c_shared_utility/xlogging.h"
-#include "apps/sntp/sntp.h"
 #include "esp_log.h"
 #include "tlsio_pal.h"
+
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#include "lwip/apps/sntp.h"
+#else
+#include "apps/sntp/sntp.h"
+#endif
+
 
 //#include "lwip/apps/sntp_time.h"
 #define TICK_RATE CONFIG_FREERTOS_HZ
@@ -24,7 +30,7 @@ void initialize_sntp(void);
 int platform_init(void)
 {
     initialize_sntp();
-    printf("ESP32 sntp inited!\n");
+    printf("ESP platform sntp inited!\n");
     time_t now = sntp_get_current_timestamp();
 
     char strftime_buf[64];
@@ -52,5 +58,5 @@ STRING_HANDLE platform_get_platform_info(void)
 {
     // Expected format: "(<runtime name>; <operating system name>; <platform>)"
 
-    return STRING_construct("(native; freertos; esp32)");
+    return STRING_construct("(native; freertos; esp platform)");
 }

@@ -4,8 +4,7 @@
  
 # Component configuration in preprocessor defines
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
- 
- 
+
 COMPONENT_ADD_INCLUDEDIRS := \
 pal \
 pal/inc \
@@ -28,8 +27,8 @@ azure/c-utility/pal/freertos/threadapi.o \
 azure/c-utility/pal/freertos/tickcounter.o \
 azure/c-utility/pal/tlsio_options.o \
 \
-pal/src/agenttime_esp32.o \
-pal/src/platform_esp32.o \
+pal/src/agenttime_esp.o \
+pal/src/platform_esp.o \
 pal/src/tlsio_openssl_compact.o \
 \
 azure/c-utility/src/xlogging.o \
@@ -64,6 +63,7 @@ azure/c-utility/src/base64.o \
 \
 \
 azure/iothub_client/src/iothub_client_ll.o \
+azure/iothub_client/src/iothub_client_core_ll.o \
 azure/iothub_client/src/iothub_client_ll_uploadtoblob.o \
 azure/iothub_client/src/iothub_client_authorization.o \
 azure/iothub_client/src/iothub_client_retry_control.o \
