@@ -23,6 +23,7 @@ Main workflow:
 ## Preparation 
 
 <a name="preparation"></a>
+
 ### 1. Hardware
 - An **ubuntu environment** should be set up to build your demo;
 - Any **[ESP device](https://www.espressif.com/en/products/hardware/modules)** can be used to run your demo.
@@ -73,7 +74,15 @@ For detailed instruction, please click [Here](doc/iothub_explorer.md).
 
 <a name="Configuring_and_Building"></a>
 
-### 1. Updating variables
+### 1. Cloning Git submodules
+
+This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) for its dependancies. To successfully clone these other repositories, after cloning this repo, use the following command in the root:
+
+```
+git submodule update --init --recursive
+```
+
+### 2. Updating variables
 - Replace the `connectionString` variable with your device connection string in [esp-azure/main/iothub_client_sample_mqtt.c](https://github.com/espressif/esp-azure/blob/master/main/iothub_client_sample_mqtt.c).
 
 ```
@@ -85,11 +94,11 @@ static const char* connectionString = '[azure connection string]';
 "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
 ```
 
-### 2. Configuring your Wi-Fi and serial port
+### 3. Configuring your Wi-Fi and serial port
 - Go to `make menuconfig` -> `Example configuration` to  configure your Wi-Fi SSID and Password; 
 - Go to `make menuconfig` -> `Serial flasher config` to configure you serial port.
 
-### 3. Building your demo and flash to ESP device with `$make flash`.
+### 4. Building your demo and flash to ESP device with `$make flash`.
 If failed, please:
 - make sure your ESP device had connected to PC with serial port;
 - make sure you have selected the corrected serial port;
