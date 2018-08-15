@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "esp_system.h"
+
 #include "iothub_client.h"
 #include "iothub_message.h"
 #include "azure_c_shared_utility/threadapi.h"
@@ -18,13 +20,15 @@
 /*String containing Hostname, Device Id & Device Key in the format:                         */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>"    */
-static const char* connectionString = "";
+#define EXAMPLE_IOTHUB_CONNECTION_STRING CONFIG_IOTHUB_CONNECTION_STRING
+static const char* connectionString = EXAMPLE_IOTHUB_CONNECTION_STRING;
 
 static int callbackCounter;
 static char msgText[1024];
 static char propText[1024];
 static bool g_continueRunning;
-#define MESSAGE_COUNT 5
+
+#define MESSAGE_COUNT 0 // Number of telemetry messages to send before exiting, or 0 to keep sending forever
 #define DOWORK_LOOP_NUM     3
 
 
@@ -108,7 +112,7 @@ void iothub_client_sample_mqtt_run(void)
 	printf("\nFile:%s Compile Time:%s %s\n",__FILE__,__DATE__,__TIME__);
     IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle;
 
-    EVENT_INSTANCE messages[MESSAGE_COUNT];
+    EVENT_INSTANCE messages[MESSAGE_COUNT || 1];
 
     g_continueRunning = true;
     srand((unsigned int)time(NULL));
@@ -153,24 +157,26 @@ void iothub_client_sample_mqtt_run(void)
 
                 do
                 {
-                    if (iterator < MESSAGE_COUNT && (iterator<= callbackCounter))
+                    if ((!MESSAGE_COUNT || (iterator < MESSAGE_COUNT)) && (iterator<= callbackCounter))
                     {
+                        EVENT_INSTANCE *thisMessage = &messages[MESSAGE_COUNT ? iterator : 0];
+
                         sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"AirConditionDevice_001\",\"windSpeed\":%.2f}", avgWindSpeed + (rand() % 4 + 2));
                         printf("Ready to Send String:%s\n",(const char*)msgText);
-                        if ((messages[iterator].messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
+                        if ((thisMessage->messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
                         {
                             (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
                         }
                         else
                         {
-                            messages[iterator].messageTrackingId = iterator;
-                            MAP_HANDLE propMap = IoTHubMessage_Properties(messages[iterator].messageHandle);
+                            thisMessage->messageTrackingId = iterator;
+                            MAP_HANDLE propMap = IoTHubMessage_Properties(thisMessage->messageHandle);
                             (void)sprintf_s(propText, sizeof(propText), "PropMsg_%zu", iterator);
                             if (Map_AddOrUpdate(propMap, "PropName", propText) != MAP_OK)
                             {
                                 (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
                             }
-                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, messages[iterator].messageHandle, SendConfirmationCallback, &messages[iterator]) != IOTHUB_CLIENT_OK)
+                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, thisMessage->messageHandle, SendConfirmationCallback, thisMessage) != IOTHUB_CLIENT_OK)
                             {
                                 (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
                             }
@@ -182,7 +188,8 @@ void iothub_client_sample_mqtt_run(void)
                         iterator++;
                     }
                     IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(1);
+                    printf("Sleeping for 5\n");
+                    ThreadAPI_Sleep(5000);
 
                     // if (callbackCounter>=MESSAGE_COUNT){
                     //     printf("done sending...\n");
