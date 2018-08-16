@@ -14,4 +14,15 @@ config WIFI_PASSWORD
 
 		Can be left blank if the network has no security set.
 
+config IOTHUB_CONNECTION_STRING
+    string "IOT Hub Device Connection String"
+	default "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
+	help
+		String containing Hostname, Device Id & Device Key in the format:
+		
+		HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+		HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>
+
+		You can get this from the iothub-explorer CLI or the Azure Portal
+
 endmenu
