@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 
+#include "internal/ssl_x509.h"
 #include "openssl/ssl.h"
 
 #include <stdio.h>
@@ -282,7 +283,9 @@ static CONCRETE_IO_HANDLE tlsio_openssl_create(void* io_create_parameters)
                 result->dns = NULL;
                 result->pending_transmission_list = NULL;
                 // No options are currently supported
-                tlsio_options_initialize(&result->options, TLSIO_OPTION_BIT_NONE);
+                // set to work with all kinds of certificates
+                tlsio_options_initialize(&result->options, TLSIO_OPTION_BIT_NONE | TLSIO_OPTION_BIT_TRUSTED_CERTS |
+                        TLSIO_OPTION_BIT_x509_RSA_CERT | TLSIO_OPTION_BIT_x509_ECC_CERT);
                 /* Codes_SRS_TLSIO_30_016: [ tlsio_create shall make a copy of the hostname member of io_create_parameters to allow deletion of hostname immediately after the call. ]*/
                 ms_result = mallocAndStrcpy_s(&result->hostname, tls_io_config->hostname);
                 if (ms_result != 0)
@@ -475,11 +478,18 @@ static void dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     }
 }
 
+int local_verify_callback(int preverify_ok, X509_STORE_CTX* ctx)
+{
+    // TODO: verify the certificate here.
+
+    return 0;
+}
 
 static int create_ssl(TLS_IO_INSTANCE* tls_io_instance)
 {
-    int result;
+    int result = 0;
     int ret;
+    X509* ca;
 
     tls_io_instance->ssl_context = SSL_CTX_new(TLSv1_2_client_method());
     if (tls_io_instance->ssl_context == NULL)
@@ -490,27 +500,71 @@ static int create_ssl(TLS_IO_INSTANCE* tls_io_instance)
     }
     else
     {
-        tls_io_instance->ssl = SSL_new(tls_io_instance->ssl_context);
-        if (tls_io_instance->ssl == NULL)
-        {
-            /* Codes_SRS_TLSIO_30_082: [ If the connection process fails for any reason, tlsio_dowork shall log an error, call on_io_open_complete with the on_io_open_complete_context parameter provided in tlsio_open and IO_OPEN_ERROR, and enter TLSIO_STATE_EX_ERROR. ]*/
-            result = __FAILURE__;
-            LogError("SSL_new failed");
+        int ssl_error = 0;
+        SSL_CTX_set_timeout(tls_io_instance->ssl_context, 150);
+        if (tls_io_instance->options.x509_key != NULL && tls_io_instance->options.x509_cert != NULL) {
+            // load certificates
+            ret = SSL_CTX_use_certificate_ASN1(tls_io_instance->ssl_context, strlen(tls_io_instance->options.x509_cert),
+                    (const unsigned char*)tls_io_instance->options.x509_cert);
+
+            if (!ret)
+            {
+                LogError("add certificate to SSL CTX failed");
+                ssl_error = 1;
+            }
+
+            // load private key
+            ret = SSL_CTX_use_PrivateKey_ASN1(0, tls_io_instance->ssl_context,
+                    (const unsigned char*)tls_io_instance->options.x509_key,
+                    strlen(tls_io_instance->options.x509_key));
+
+            if (!ret)
+            {
+                LogError("add Private Key to SSL CTX failed");
+                ssl_error = 1;
+            }
         }
-        else
+
+        if (tls_io_instance->options.trusted_certs != NULL) {
+            ca = d2i_X509(NULL, (const unsigned char*)tls_io_instance->options.trusted_certs, strlen(tls_io_instance->options.trusted_certs));
+            X509_STORE_add_cert(SSL_CTX_get_cert_store(tls_io_instance->ssl_context), ca);
+
+            SSL_CTX_set_verify_depth(tls_io_instance->ssl_context, 1);
+            SSL_CTX_set_verify(tls_io_instance->ssl_context, SSL_VERIFY_PEER, local_verify_callback);
+        }
+
+        if (ssl_error == 0)
         {
-            // returns 1 on success
-            ret = SSL_set_fd(tls_io_instance->ssl, tls_io_instance->sock);
-            if (ret != 1)
+            tls_io_instance->ssl = SSL_new(tls_io_instance->ssl_context);
+
+            if (tls_io_instance->ssl == NULL)
             {
                 /* Codes_SRS_TLSIO_30_082: [ If the connection process fails for any reason, tlsio_dowork shall log an error, call on_io_open_complete with the on_io_open_complete_context parameter provided in tlsio_open and IO_OPEN_ERROR, and enter TLSIO_STATE_EX_ERROR. ]*/
                 result = __FAILURE__;
-                LogError("SSL_set_fd failed");
+                LogError("SSL_new failed");
             }
             else
             {
-                result = 0;
+                // returns 1 on success
+                ret = SSL_set_fd(tls_io_instance->ssl, tls_io_instance->sock);
+                if (ret != 1)
+                {
+                    /* Codes_SRS_TLSIO_30_082: [ If the connection process fails for any reason, tlsio_dowork shall log an error,
+                     * call on_io_open_complete with the on_io_open_complete_context parameter provided in tlsio_open and
+                     * IO_OPEN_ERROR, and enter TLSIO_STATE_EX_ERROR. ]*/
+                    result = __FAILURE__;
+                    LogError("SSL_set_fd failed");
+                }
+                else
+                {
+                    result = 0;
+                }
             }
+        }
+        else
+        {
+            LogError("we have an ssl certificate issue here!!");
+            result = __FAILURE__;
         }
     }
 
