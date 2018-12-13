@@ -3,6 +3,8 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := azure
+PROJECT_NAME := iothub_client_sample_mqtt
+
+EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../esp-azure
 
 include $(IDF_PATH)/make/project.mk
