@@ -4,18 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "esp_system.h"
-
 #include "iothub_client.h"
 #include "iothub_message.h"
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/platform.h"
 #include "iothubtransportmqtt.h"
-
-#ifdef MBED_BUILD_TIMESTAMP
-#include "certs.h"
-#endif // MBED_BUILD_TIMESTAMP
+#include "iothub_client_options.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 /*String containing Hostname, Device Id & Device Key in the format:                         */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
@@ -27,10 +25,8 @@ static int callbackCounter;
 static char msgText[1024];
 static char propText[1024];
 static bool g_continueRunning;
-
-#define MESSAGE_COUNT 0 // Number of telemetry messages to send before exiting, or 0 to keep sending forever
+#define MESSAGE_COUNT 50
 #define DOWORK_LOOP_NUM     3
-
 
 typedef struct EVENT_INSTANCE_TAG
 {
@@ -38,32 +34,35 @@ typedef struct EVENT_INSTANCE_TAG
     size_t messageTrackingId;  // For tracking the messages within the user callback.
 } EVENT_INSTANCE;
 
-static unsigned char* bytearray_to_str(const unsigned char *buffer, size_t len)
-{
-    unsigned char* ret = (unsigned char*)malloc(len+1);
-    memcpy(ret, buffer, len);
-    ret[len] = '\0';
-    return ret;
-}
-
 static IOTHUBMESSAGE_DISPOSITION_RESULT ReceiveMessageCallback(IOTHUB_MESSAGE_HANDLE message, void* userContextCallback)
 {
-
     int* counter = (int*)userContextCallback;
     const char* buffer;
     size_t size;
+    MAP_HANDLE mapProperties;
+    const char* messageId;
+    const char* correlationId;
 
+    // Message properties
+    if ((messageId = IoTHubMessage_GetMessageId(message)) == NULL)
+    {
+        messageId = "<null>";
+    }
+
+    if ((correlationId = IoTHubMessage_GetCorrelationId(message)) == NULL)
+    {
+        correlationId = "<null>";
+    }
+
+    // Message content
     if (IoTHubMessage_GetByteArray(message, (const unsigned char**)&buffer, &size) != IOTHUB_MESSAGE_OK)
     {
         (void)printf("unable to retrieve the message data\r\n");
     }
     else
     {
-        unsigned char* message_string = bytearray_to_str((const unsigned char *)buffer, size);
-        (void)printf("IoTHubMessage_GetByteArray received message: \"%s\" \n", message_string);
-        free(message_string);
-
-        // If we receive the word 'quit' then we stop running
+        (void)printf("Received Message [%d]\r\n Message ID: %s\r\n Correlation ID: %s\r\n Data: <<<%.*s>>> & Size=%d\r\n", *counter, messageId, correlationId, (int)size, buffer, (int)size);
+        // If we receive the work 'quit' then we stop running
         if (size == (strlen("quit") * sizeof(char)) && memcmp(buffer, "quit", size) == 0)
         {
             g_continueRunning = false;
@@ -71,7 +70,7 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT ReceiveMessageCallback(IOTHUB_MESSAGE_HA
     }
 
     // Retrieve properties from the message
-    MAP_HANDLE mapProperties = IoTHubMessage_Properties(message);
+    mapProperties = IoTHubMessage_Properties(message);
     if (mapProperties != NULL)
     {
         const char*const* keys;
@@ -81,12 +80,14 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT ReceiveMessageCallback(IOTHUB_MESSAGE_HA
         {
             if (propertyCount > 0)
             {
-                size_t index = 0;
+                size_t index;
+
+                printf(" Message Properties:\r\n");
                 for (index = 0; index < propertyCount; index++)
                 {
-                    //(void)printf("\tKey: %s Value: %s\r\n", keys[index], values[index]);
+                    (void)printf("\tKey: %s Value: %s\r\n", keys[index], values[index]);
                 }
-                //(void)printf("\r\n");
+                (void)printf("\r\n");
             }
         }
     }
@@ -109,17 +110,19 @@ static void SendConfirmationCallback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, v
 
 void iothub_client_sample_mqtt_run(void)
 {
-	printf("\nFile:%s Compile Time:%s %s\n",__FILE__,__DATE__,__TIME__);
     IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle;
 
-    EVENT_INSTANCE messages[MESSAGE_COUNT || 1];
+    EVENT_INSTANCE messages[MESSAGE_COUNT];
 
     g_continueRunning = true;
     srand((unsigned int)time(NULL));
     double avgWindSpeed = 10.0;
+    double minTemperature = 20.0;
+    double minHumidity = 60.0;
 
     callbackCounter = 0;
     int receiveContext = 0;
+
     if (platform_init() != 0)
     {
         (void)printf("Failed to initialize the platform.\r\n");
@@ -133,15 +136,7 @@ void iothub_client_sample_mqtt_run(void)
         else
         {
             bool traceOn = true;
-            IoTHubClient_LL_SetOption(iotHubClientHandle, "logtrace", &traceOn);
-
-#ifdef MBED_BUILD_TIMESTAMP
-            // For mbed add the certificate information
-            if (IoTHubClient_LL_SetOption(iotHubClientHandle, "TrustedCerts", certificates) != IOTHUB_CLIENT_OK)
-            {
-                printf("failure to set option \"TrustedCerts\"\r\n");
-            }
-#endif // MBED_BUILD_TIMESTAMP
+            IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
 
             /* Setting Message call back, so we can receive Commands. */
             if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
@@ -153,30 +148,33 @@ void iothub_client_sample_mqtt_run(void)
                 (void)printf("IoTHubClient_LL_SetMessageCallback...successful.\r\n");
 
                 /* Now that we are ready to receive commands, let's send some messages */
-                size_t iterator = 0;
-
+                int iterator = 0;
+                double temperature = 0;
+                double humidity = 0;
                 do
                 {
-                    if ((!MESSAGE_COUNT || (iterator < MESSAGE_COUNT)) && (iterator<= callbackCounter))
-                    {
-                        EVENT_INSTANCE *thisMessage = &messages[MESSAGE_COUNT ? iterator : 0];
+                    (void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
 
-                        sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"AirConditionDevice_001\",\"windSpeed\":%.2f}", avgWindSpeed + (rand() % 4 + 2));
-                        printf("Ready to Send String:%s\n",(const char*)msgText);
-                        if ((thisMessage->messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
+                    if (iterator < MESSAGE_COUNT && (iterator <= callbackCounter))
+                    {
+                        temperature = minTemperature + (rand() % 10);
+                        humidity = minHumidity +  (rand() % 20);
+                        sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"myFirstDevice\",\"windSpeed\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f}", avgWindSpeed + (rand() % 4 + 2), temperature, humidity);
+                        if ((messages[iterator].messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
                         {
                             (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
                         }
                         else
                         {
-                            thisMessage->messageTrackingId = iterator;
-                            MAP_HANDLE propMap = IoTHubMessage_Properties(thisMessage->messageHandle);
-                            (void)sprintf_s(propText, sizeof(propText), "PropMsg_%zu", iterator);
-                            if (Map_AddOrUpdate(propMap, "PropName", propText) != MAP_OK)
+                            messages[iterator].messageTrackingId = iterator;
+                            MAP_HANDLE propMap = IoTHubMessage_Properties(messages[iterator].messageHandle);
+                            (void)sprintf_s(propText, sizeof(propText), temperature > 28 ? "true" : "false");
+                            if (Map_AddOrUpdate(propMap, "temperatureAlert", propText) != MAP_OK)
                             {
                                 (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
                             }
-                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, thisMessage->messageHandle, SendConfirmationCallback, thisMessage) != IOTHUB_CLIENT_OK)
+
+                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, messages[iterator].messageHandle, SendConfirmationCallback, &messages[iterator]) != IOTHUB_CLIENT_OK)
                             {
                                 (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
                             }
@@ -188,13 +186,13 @@ void iothub_client_sample_mqtt_run(void)
                         iterator++;
                     }
                     IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    printf("Sleeping for 5\n");
-                    ThreadAPI_Sleep(5000);
+                    ThreadAPI_Sleep(10);
 
-                    // if (callbackCounter>=MESSAGE_COUNT){
-                    //     printf("done sending...\n");
-                    //     break;
-                    // }
+                    if (callbackCounter >= MESSAGE_COUNT)
+                    {
+                        printf("exit\n");
+                        break;
+                    }
                 } while (g_continueRunning);
 
                 (void)printf("iothub_client_sample_mqtt has gotten quit message, call DoWork %d more time to complete final sending...\r\n", DOWORK_LOOP_NUM);
