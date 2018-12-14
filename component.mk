@@ -8,6 +8,7 @@ CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 COMPONENT_ADD_INCLUDEDIRS := \
 port \
 port/inc \
+azure-iot-sdk-c/certs \
 azure-iot-sdk-c/c-utility/inc \
 azure-iot-sdk-c/c-utility/inc/azure_c_shared_utility \
 azure-iot-sdk-c/c-utility/pal/inc \
@@ -17,9 +18,14 @@ azure-iot-sdk-c/iothub_client/inc \
 azure-iot-sdk-c/serializer/inc \
 azure-iot-sdk-c/umqtt/inc \
 azure-iot-sdk-c/umqtt/inc/azure_umqtt_c \
-azure-iot-sdk-c/deps/parson
+azure-iot-sdk-c/deps/parson \
+azure-iot-sdk-c/provisioning_client/inc \
+azure-iot-sdk-c/provisioning_client/adapters \
+azure-iot-sdk-c/provisioning_client/deps/utpm/inc \
+ 
  
 COMPONENT_OBJS = \
+azure-iot-sdk-c/certs/certs.o \
 azure-iot-sdk-c/c-utility/pal/freertos/lock.o \
 azure-iot-sdk-c/c-utility/pal/dns_async.o \
 azure-iot-sdk-c/c-utility/pal/socket_async.o \
@@ -30,6 +36,7 @@ azure-iot-sdk-c/c-utility/pal/tlsio_options.o \
 port/src/agenttime_esp.o \
 port/src/platform_esp.o \
 port/src/tlsio_openssl_compact.o \
+port/src/socketio_berkeley.o \
 \
 azure-iot-sdk-c/c-utility/src/xlogging.o \
 azure-iot-sdk-c/c-utility/src/singlylinkedlist.o \
@@ -62,6 +69,7 @@ azure-iot-sdk-c/c-utility/src/xio.o \
 azure-iot-sdk-c/c-utility/src/base64.o \
 \
 \
+azure-iot-sdk-c/iothub_client/src/iothub_device_client_ll.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_ll.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_core_ll.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_ll_uploadtoblob.o \
@@ -99,9 +107,28 @@ azure-iot-sdk-c/serializer/src/schemalib.o \
 azure-iot-sdk-c/serializer/src/schemaserializer.o \
 \
 \
+azure-iot-sdk-c/provisioning_client/src/prov_device_client.o \
+azure-iot-sdk-c/provisioning_client/src/prov_transport_mqtt_client.o \
+azure-iot-sdk-c/provisioning_client/src/prov_transport_mqtt_common.o \
+azure-iot-sdk-c/provisioning_client/src/prov_security_factory.o \
+azure-iot-sdk-c/provisioning_client/src/prov_device_ll_client.o \
+azure-iot-sdk-c/provisioning_client/src/iothub_security_factory.o \
+azure-iot-sdk-c/provisioning_client/adapters/hsm_client_data.o \
+azure-iot-sdk-c/provisioning_client/adapters/hsm_client_tpm.o \
+azure-iot-sdk-c/provisioning_client/src/prov_auth_client.o \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_codec.o \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src/Marshal.o \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_comm_emulator.o \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src/Memory.o \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_socket_comm.o \
+azure-iot-sdk-c/iothub_client/src/iothub.o \
+azure-iot-sdk-c/c-utility/src/http_proxy_io.o \
+azure-iot-sdk-c/c-utility/src/base32.o \
+
  
 COMPONENT_SRCDIRS := \
 port/src \
+azure-iot-sdk-c/certs \
 azure-iot-sdk-c/c-utility/pal \
 azure-iot-sdk-c/c-utility/pal/freertos \
 azure-iot-sdk-c/c-utility/pal/lwip \
@@ -110,4 +137,12 @@ azure-iot-sdk-c/c-utility/adapters \
 azure-iot-sdk-c/umqtt/src \
 azure-iot-sdk-c/iothub_client/src \
 azure-iot-sdk-c/serializer/src \
-azure-iot-sdk-c/deps/parson
+azure-iot-sdk-c/deps/parson \
+azure-iot-sdk-c/prov_device_client/src \
+azure-iot-sdk-c/iothub_client_mqtt_transport \
+azure-iot-sdk-c/iothub_client_amqp_transport \
+azure-iot-sdk-c/provisioning_client/src \
+azure-iot-sdk-c/provisioning_client/adapters \
+azure-iot-sdk-c/provisioning_client/deps/utpm/src \
+
+CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_X509 -DHSM_TYPE_SAS_TOKEN

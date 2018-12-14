@@ -29,3 +29,7 @@ build_demo:
     - cd examples/iothub_client_sample_mqtt
     - make defconfig
     - make
+    - cd ../../
+    - cd examples/prov_dev_client_ll_sample
+    - make defconfig
+    - make

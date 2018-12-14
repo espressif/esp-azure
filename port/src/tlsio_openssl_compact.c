@@ -281,8 +281,7 @@ static CONCRETE_IO_HANDLE tlsio_openssl_create(void* io_create_parameters)
                 result->hostname = NULL;
                 result->dns = NULL;
                 result->pending_transmission_list = NULL;
-                // No options are currently supported
-                tlsio_options_initialize(&result->options, TLSIO_OPTION_BIT_NONE);
+                tlsio_options_initialize(&result->options, TLSIO_OPTION_BIT_TRUSTED_CERTS | TLSIO_OPTION_BIT_x509_RSA_CERT | TLSIO_OPTION_BIT_x509_ECC_CERT);
                 /* Codes_SRS_TLSIO_30_016: [ tlsio_create shall make a copy of the hostname member of io_create_parameters to allow deletion of hostname immediately after the call. ]*/
                 ms_result = mallocAndStrcpy_s(&result->hostname, tls_io_config->hostname);
                 if (ms_result != 0)
