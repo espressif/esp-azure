@@ -5,15 +5,26 @@
 #include <stdlib.h>
 
 #include "iothub_client.h"
+#include "iothub_device_client_ll.h"
+#include "iothub_client_options.h"
 #include "iothub_message.h"
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/platform.h"
+#include "azure_c_shared_utility/shared_util_options.h"
 #include "iothubtransportmqtt.h"
 #include "iothub_client_options.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#ifdef MBED_BUILD_TIMESTAMP
+    #define SET_TRUSTED_CERT_IN_SAMPLES
+#endif // MBED_BUILD_TIMESTAMP
+
+#ifdef SET_TRUSTED_CERT_IN_SAMPLES
+    #include "certs.h"
+#endif // SET_TRUSTED_CERT_IN_SAMPLES
 
 /*String containing Hostname, Device Id & Device Key in the format:                         */
 /*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
@@ -137,6 +148,12 @@ void iothub_client_sample_mqtt_run(void)
         {
             bool traceOn = true;
             IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
+
+            // Setting the Trusted Certificate.  This is only necessary on system with without
+            // built in certificate stores.
+#ifdef SET_TRUSTED_CERT_IN_SAMPLES
+            IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, OPTION_TRUSTED_CERT, certificates);
+#endif // SET_TRUSTED_CERT_IN_SAMPLES
 
             /* Setting Message call back, so we can receive Commands. */
             if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
