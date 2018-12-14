@@ -6,6 +6,7 @@ variables:
   V: "0"
   MAKEFLAGS: "-j5 --no-keep-going"
   IDF_PATH: "$CI_PROJECT_DIR/esp-idf"
+  IDF_CI_BUILD: "1"
 
 build_demo:
   stage: build

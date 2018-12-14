@@ -3,18 +3,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <stdint.h>
+#include <sdkconfig.h>
 #include "hsm_client_data.h"
+
+static const char* const COMMON_NAME = CONFIG_DEVICE_COMMON_NAME;
+
+extern const uint8_t leaf_cert_pem_start[] asm("_binary_leaf_certificate_pem_start");
+extern const uint8_t leaf_pv_key_pem_start[] asm("_binary_leaf_private_key_pem_start");
 
 // This sample is provided for sample only.  Please do not use this in production
 // For more information please see the devdoc using_custom_hsm.md
-static const char* const COMMON_NAME = "custom-hsm-example";
-static const char* const CERTIFICATE = "-----BEGIN CERTIFICATE-----""\n"
-"BASE64 Encoded certificate Here""\n"
-"-----END CERTIFICATE-----";
-static const char* const PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----""\n"
-"BASE64 Encoded certificate Here""\n"
-"-----END PRIVATE KEY-----";
+static const char* const CERTIFICATE = (char *)leaf_cert_pem_start;
+static const char* const PRIVATE_KEY = (char *)leaf_pv_key_pem_start;
 
 // Provided for sample only
 static const char* const SYMMETRIC_KEY = "Symmetric Key value";
