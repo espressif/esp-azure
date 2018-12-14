@@ -19,7 +19,7 @@
 #include "iothub_client_options.h"
 #include "azure_prov_client/prov_device_ll_client.h"
 #include "azure_prov_client/prov_security_factory.h"
-
+#include "sdkconfig.h"
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
 #include "certs.h"
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
@@ -65,7 +65,7 @@ DEFINE_ENUM_STRINGS(PROV_DEVICE_RESULT, PROV_DEVICE_RESULT_VALUE);
 DEFINE_ENUM_STRINGS(PROV_DEVICE_REG_STATUS, PROV_DEVICE_REG_STATUS_VALUES);
 
 static const char* global_prov_uri = "global.azure-devices-provisioning.net";
-static const char* id_scope = "[ID Scope]";
+static const char* id_scope = CONFIG_DPS_ID_SCOPE;
 
 static bool g_use_proxy = false;
 static const char* PROXY_ADDRESS = "127.0.0.1";

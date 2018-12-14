@@ -16,7 +16,7 @@ config WIFI_PASSWORD
 
 config IOTHUB_CONNECTION_STRING
     string "IOT Hub Device Connection String"
-	default "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
+	default "HostName=<host_name>;DeviceId=<device_id>;x509=true"
 	help
 		String containing Hostname, Device Id & Device Key in the format:
 		
@@ -24,5 +24,18 @@ config IOTHUB_CONNECTION_STRING
 		HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>
 
 		You can get this from the iothub-explorer CLI or the Azure Portal
+
+config DEVICE_COMMON_NAME
+    string "Device Leaf Certificate Common Name"
+    default "mydevice"
+    help
+        Common name of Leaf Certificate
+
+config DPS_ID_SCOPE
+    string "Unique ID Scope of Device provisioning service"
+    default "myidscope"
+    help
+        This is the unique ID scope of DPS, and can be found under "Overview"
+        section of your DPS on azure IoT portal
 
 endmenu
