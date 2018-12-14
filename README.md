@@ -92,8 +92,9 @@ git submodule update --init --recursive
 
 ### 2. Configuring your Azure IOT Hub Device Connection String, Wi-Fi and serial port
 
-- Go to `make menuconfig` -> `Example configuration` to configure your Azure IOT Hub Device Connection String, Wi-Fi SSID and Password; 
-- Go to `make menuconfig` -> `Serial flasher config` to configure you serial port.
+- Change to `examples/iothub_client_sample_mqtt` directory
+- Run `make menuconfig` -> `Example configuration` to configure your Azure IOT Hub Device Connection String, Wi-Fi SSID and Password; 
+- Run `make menuconfig` -> `Serial flasher config` to configure you serial port.
 
 ### 3. Building your demo and flash to ESP device with `$make flash`.
 

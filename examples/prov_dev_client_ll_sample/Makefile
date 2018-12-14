@@ -3,6 +3,8 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := azure
+PROJECT_NAME := prov_dev_client_ll_sample
+
+EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../esp-azure
 
 include $(IDF_PATH)/make/project.mk

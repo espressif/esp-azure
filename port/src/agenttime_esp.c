@@ -17,12 +17,7 @@
 #include "azure_c_shared_utility/agenttime.h"
 #include "azure_c_shared_utility/xlogging.h"
 
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
 #include "lwip/apps/sntp.h"
-#else
-#include "apps/sntp/sntp.h"
-#endif
-
 
 
 void initialize_sntp(void)
@@ -64,7 +59,6 @@ time_t sntp_get_current_timestamp()
 		// update 'now' variable with current time
 		time(&now);
 	}
-	char strftime_buf[64];
 
 	// Set timezone to China Standard Time
 	setenv("TZ", "CST-8CDT-9,M4.2.0/2,M9.2.0/3", 1);
