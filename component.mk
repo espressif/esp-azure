@@ -125,6 +125,9 @@ azure-iot-sdk-c/iothub_client/src/iothub.o \
 azure-iot-sdk-c/c-utility/src/http_proxy_io.o \
 azure-iot-sdk-c/c-utility/src/base32.o \
 
+ifdef CONFIG_DEVICE_COMMON_NAME
+COMPONENT_OBJS += azure-iot-sdk-c/provisioning_client/src/iothub_auth_client.o
+endif
  
 COMPONENT_SRCDIRS := \
 port/src \
@@ -146,3 +149,7 @@ azure-iot-sdk-c/provisioning_client/adapters \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src \
 
 CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_X509 -DHSM_TYPE_SAS_TOKEN
+
+ifdef CONFIG_DEVICE_COMMON_NAME
+CFLAGS += -DUSE_PROV_MODULE
+endif
