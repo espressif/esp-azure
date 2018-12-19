@@ -32,7 +32,7 @@ config DEVICE_COMMON_NAME
         Common name of Leaf Certificate
 
 config DPS_ID_SCOPE
-    string "Unique ID Scope of Device provisioning service"
+    string "Unique DPS ID Scope of Device provisioning service"
     default "myidscope"
     help
         This is the unique ID scope of DPS, and can be found under "Overview"

@@ -33,38 +33,29 @@ Main workflow:
 
 ### 2. Azure IoT Hub
 
-- [Get iothub connection string (primary key)](https://www.azure.cn/en-us/pricing/1rmb-trial-full/?form-type=identityauth) from the Azure IoT Hub, which will be used later. An example can be seen below:
+- [Get iothub connection string (primary key)](https://azure.microsoft.com/en-in/services/iot-hub/) from the Azure IoT Hub, which will be used later. An example can be seen below:
 
 ```
 HostName=yourname-ms-lot-hub.azure-devices.cn;SharedAccessKeyName=iothubowner;SharedAccessKey=zMeLQ0JTlZXVcHBVOwRFVmlFtcCz+CtbDpUPBWexbIY=
 ```
 - For step-by-step instructions, please click [here](doc/IoT_Suite.md).
 
-### 3. iothub-explorer
+### 3. Azure CLI
 
-- Install [Node.js](https://nodejs.org/en/);  
-- Install [iothub-explorer](https://www.npmjs.com/package/iothub-explorer) with command line `npm install -g iothub-explorer`.
-  - If failed, please check [here](http://thinglabs.io/workshop/esp8266/setup-azure-iot-hub/) for more information.
-  - If succeeded, please check the version information with the command lines below:
-```
-$ node -v
-v6.9.5
-$ iothub-explorer -V
-1.1.6
-```
+- Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 
-After that, you should be able to use iothub-explorer to manage your iot-device.
+After that, you should be able to use azure CLI to manage your iot-device.
 
 ### 4. Device Connection String
 
-- login with the **iothub connection string (primary key)** you got earlier with command lines;
+- login to Azure CLI
 - create your device, and get a **device connection string**. An example can be seen:
 
 ``` 
 "HostName=esp-hub.azure-devices.net;DeviceId=yourdevice;SharedAccessKey=L7tvFTjFuVTQHtggEtv3rp+tKEJzQLLpDnO0edVGKCg=";
 ```
 
-For detailed instruction, please click [Here](doc/iothub_explorer.md).
+For detailed instruction, please click [Here](doc/azure_cli_iot_hub.md).
  
 ### 5. SDK
 
@@ -89,36 +80,6 @@ This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodu
 ``` bash
 git submodule update --init --recursive
 ```
-
-### 2. Configuring your Azure IOT Hub Device Connection String, Wi-Fi and serial port
-
-- Change to `examples/iothub_client_sample_mqtt` directory
-- Run `make menuconfig` -> `Example configuration` to configure your Azure IOT Hub Device Connection String, Wi-Fi SSID and Password; 
-- Run `make menuconfig` -> `Serial flasher config` to configure you serial port.
-
-### 3. Building your demo and flash to ESP device with `$make flash`.
-
-If failed, please:
-
-- make sure your ESP device had connected to PC with serial port;
-- make sure you have selected the corrected serial port;
-  - command `> sudo usermod -a -G dialout $USER` can also be used.
-
-To monitor the device output while running, run 
-
-``` bash
-make monitor
-```
-
-To exit the monitor, hit Control-]
-
-You can also run the build and monitor in onte step and run with multiple compiler threads:
-
-``` bash
-make -j4 flash monitor
-```
-
-This will build with four concurrent build processes to take advantage of more cores on your workstation.
 
 ## Checking Result
 
