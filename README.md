@@ -87,7 +87,8 @@ git submodule update --init --recursive
 
 Please check results on both the iothub and device side:
 
-- iothub: log into iothub-explorer, and monitor events with command `iothub-explorer monitor-events yourdevice --login 'yourprimarykey'`
+- az iot hub monitor-events -n [IoTHub Name] --login 'HostName=myhub.azuredevices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=12345'
+
 - ESP device: monitor events with command `make monitor`
 
 ESP device would send data to the Azure cloud, and then you would be able to receive data at the iothub side.

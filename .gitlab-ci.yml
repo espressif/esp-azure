@@ -1,5 +1,6 @@
 stages:
-  - build
+  - build_esp32
+  - build_esp8266
 
 variables:
   BATCH_BUILD: "1"
@@ -8,8 +9,8 @@ variables:
   IDF_PATH: "$CI_PROJECT_DIR/esp-idf"
   IDF_CI_BUILD: "1"
 
-build_demo:
-  stage: build
+build_esp32_demo:
+  stage: build_esp32
   image: $CI_DOCKER_REGISTRY/esp32-ci-env
   tags:
     - build
@@ -27,6 +28,30 @@ build_demo:
     - cd esp-idf
     - ./tools/ci/mirror-submodule-update.sh
     - cd ..
+    - cd examples/iothub_client_sample_mqtt
+    - make defconfig
+    - make
+    - cd ../../
+    - cd examples/prov_dev_client_ll_sample
+    - make defconfig
+    - make
+
+build_esp8266_demo:
+  stage: build_esp8266
+  image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new 
+  tags:
+    - build
+  script:
+    # add gitlab ssh key
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
+    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    - git --version
+    - git clone --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
+    - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
     - cd examples/iothub_client_sample_mqtt
     - make defconfig
     - make
