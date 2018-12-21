@@ -151,6 +151,11 @@ static void register_device_callback(PROV_DEVICE_RESULT register_result, const c
     }
 }
 
+const IO_INTERFACE_DESCRIPTION* socketio_get_interface_description(void)
+{
+    return NULL;
+}
+
 int prov_dev_client_ll_sample_run()
 {
     SECURE_DEVICE_TYPE hsm_type;
