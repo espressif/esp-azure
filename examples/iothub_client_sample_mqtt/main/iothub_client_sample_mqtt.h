@@ -8,7 +8,14 @@
 extern "C" {
 #endif
 
-	void iothub_client_sample_mqtt_run(void);
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+
+/* FreeRTOS event group to signal when we are connected & ready to make a request */
+extern EventGroupHandle_t wifi_event_group;
+extern const int CONNECTED_BIT;
+
+void iothub_client_sample_mqtt_run(void);
 
 #ifdef __cplusplus
 }
