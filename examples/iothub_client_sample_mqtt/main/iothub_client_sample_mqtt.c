@@ -17,6 +17,8 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "iothub_client_sample_mqtt.h"
+#include "errno.h"
 
 #ifdef MBED_BUILD_TIMESTAMP
     #define SET_TRUSTED_CERT_IN_SAMPLES
@@ -132,97 +134,116 @@ void iothub_client_sample_mqtt_run(void)
     double minHumidity = 60.0;
 
     callbackCounter = 0;
+    int iterator = 0;
     int receiveContext = 0;
-
-    if (platform_init() != 0)
-    {
-        (void)printf("Failed to initialize the platform.\r\n");
-    }
-    else
-    {
-        if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, MQTT_Protocol)) == NULL)
+    while (1) {
+        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                        false, true, portMAX_DELAY);
+        if (platform_init() != 0)
         {
-            (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
+            (void)printf("Failed to initialize the platform.\r\n");
+            break;
         }
         else
         {
-            bool traceOn = true;
-            IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
-
-            // Setting the Trusted Certificate.  This is only necessary on system with without
-            // built in certificate stores.
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-            IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, OPTION_TRUSTED_CERT, certificates);
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
-
-            /* Setting Message call back, so we can receive Commands. */
-            if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
+            if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, MQTT_Protocol)) == NULL)
             {
-                (void)printf("ERROR: IoTHubClient_LL_SetMessageCallback..........FAILED!\r\n");
+                (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
             }
             else
             {
-                (void)printf("IoTHubClient_LL_SetMessageCallback...successful.\r\n");
+                bool traceOn = true;
+                IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
 
-                /* Now that we are ready to receive commands, let's send some messages */
-                int iterator = 0;
-                double temperature = 0;
-                double humidity = 0;
-                do
+                // Setting the Trusted Certificate.  This is only necessary on system with without
+                // built in certificate stores.
+#ifdef SET_TRUSTED_CERT_IN_SAMPLES
+                IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, OPTION_TRUSTED_CERT, certificates);
+#endif // SET_TRUSTED_CERT_IN_SAMPLES
+
+                /* Setting Message call back, so we can receive Commands. */
+                if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
                 {
-                    (void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
+                    (void)printf("ERROR: IoTHubClient_LL_SetMessageCallback..........FAILED!\r\n");
+                }
+                else
+                {
+                    (void)printf("IoTHubClient_LL_SetMessageCallback...successful.\r\n");
 
-                    if (iterator < MESSAGE_COUNT && (iterator <= callbackCounter))
+                    /* Now that we are ready to receive commands, let's send some messages */
+
+                    double temperature = 0;
+                    double humidity = 0;
+                    do
                     {
-                        temperature = minTemperature + (rand() % 10);
-                        humidity = minHumidity +  (rand() % 20);
-                        sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"myFirstDevice\",\"windSpeed\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f}", avgWindSpeed + (rand() % 4 + 2), temperature, humidity);
-                        if ((messages[iterator].messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
-                        {
-                            (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
-                        }
-                        else
-                        {
-                            messages[iterator].messageTrackingId = iterator;
-                            MAP_HANDLE propMap = IoTHubMessage_Properties(messages[iterator].messageHandle);
-                            (void)sprintf_s(propText, sizeof(propText), temperature > 28 ? "true" : "false");
-                            if (Map_AddOrUpdate(propMap, "temperatureAlert", propText) != MAP_OK)
-                            {
-                                (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
-                            }
+                        (void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
 
-                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, messages[iterator].messageHandle, SendConfirmationCallback, &messages[iterator]) != IOTHUB_CLIENT_OK)
+                        if (iterator < MESSAGE_COUNT && (iterator <= callbackCounter))
+                        {
+                            temperature = minTemperature + (rand() % 10);
+                            humidity = minHumidity +  (rand() % 20);
+                            sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"myFirstDevice\",\"windSpeed\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f}", avgWindSpeed + (rand() % 4 + 2), temperature, humidity);
+                            if ((messages[iterator].messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
                             {
-                                (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
+                                (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
                             }
                             else
                             {
-                                (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%d] for transmission to IoT Hub.\r\n", (int)iterator);
+                                messages[iterator].messageTrackingId = iterator;
+                                MAP_HANDLE propMap = IoTHubMessage_Properties(messages[iterator].messageHandle);
+                                (void)sprintf_s(propText, sizeof(propText), temperature > 28 ? "true" : "false");
+                                if (Map_AddOrUpdate(propMap, "temperatureAlert", propText) != MAP_OK)
+                                {
+                                    (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
+                                }
+
+                                if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, messages[iterator].messageHandle, SendConfirmationCallback, &messages[iterator]) != IOTHUB_CLIENT_OK)
+                                {
+                                    (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
+                                }
+                                else
+                                {
+                                    (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%d] for transmission to IoT Hub.\r\n", (int)iterator);
+                                }
                             }
+                            iterator++;
                         }
-                        iterator++;
-                    }
-                    IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(10);
+                        IoTHubClient_LL_DoWork(iotHubClientHandle);
+                        ThreadAPI_Sleep(10);
+                        if (errno == ECONNABORTED || errno == ECONNRESET) {
+                            break;
+                        }
 
-                    if (callbackCounter >= MESSAGE_COUNT)
-                    {
-                        printf("exit\n");
-                        break;
-                    }
-                } while (g_continueRunning);
+                        if (callbackCounter >= MESSAGE_COUNT)
+                        {
+                            printf("exit\n");
+                            break;
+                        }
+                    } while (g_continueRunning);
 
-                (void)printf("iothub_client_sample_mqtt has gotten quit message, call DoWork %d more time to complete final sending...\r\n", DOWORK_LOOP_NUM);
-                size_t index = 0;
-                for (index = 0; index < DOWORK_LOOP_NUM; index++)
-                {
-                    IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(1);
+                    if (callbackCounter >= MESSAGE_COUNT) {
+                        (void)printf("iothub_client_sample_mqtt has gotten quit message, call DoWork %d more time to complete final sending...\r\n", DOWORK_LOOP_NUM);
+                        size_t index = 0;
+                        for (index = 0; index < DOWORK_LOOP_NUM; index++)
+                        {
+                            IoTHubClient_LL_DoWork(iotHubClientHandle);
+                            ThreadAPI_Sleep(1);
+                        }
+                    }
                 }
+
+                IoTHubClient_LL_Destroy(iotHubClientHandle);
             }
-            IoTHubClient_LL_Destroy(iotHubClientHandle);
+            platform_deinit();
+            if (callbackCounter > 0 && callbackCounter < MESSAGE_COUNT)
+            {
+                continue;
+            } 
+            else
+            {
+                break;
+            }
         }
-        platform_deinit();
     }
 }
 
