@@ -385,7 +385,7 @@ static int tlsio_esp_tls_close_async(CONCRETE_IO_HANDLE tls_io, ON_IO_CLOSE_COMP
     return result;
 }
 
-static void dowork_read(TLS_IO_INSTANCE* tls_io_instance)
+static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
 {
     // TRANSFER_BUFFER_SIZE is not very important because if the message is bigger
     // then the framework just calls dowork repeatedly until it gets everything. So
@@ -393,7 +393,7 @@ static void dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     // Putting this buffer in a small function also allows it to exist on the stack
     // rather than adding to heap fragmentation.
     unsigned char buffer[TLSIO_RECEIVE_BUFFER_SIZE];
-    int rcv_bytes;
+    int rcv_bytes = 0;
 
     if (tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
     {
@@ -408,17 +408,19 @@ static void dowork_read(TLS_IO_INSTANCE* tls_io_instance)
         }
         /* Codes_SRS_TLSIO_30_102: [ If the TLS connection receives no data then tlsio_dowork shall not call the on_bytes_received callback. ]*/
     }
+    return rcv_bytes;
 }
 
-static void dowork_send(TLS_IO_INSTANCE* tls_io_instance)
+static int dowork_send(TLS_IO_INSTANCE* tls_io_instance)
 {
     LIST_ITEM_HANDLE first_pending_io = singlylinkedlist_get_head_item(tls_io_instance->pending_transmission_list);
+    int write_result = 0;
     if (first_pending_io != NULL)
     {
         PENDING_TRANSMISSION* pending_message = (PENDING_TRANSMISSION*)singlylinkedlist_item_get_value(first_pending_io);
         uint8_t* buffer = ((uint8_t*)pending_message->bytes) +
             pending_message->size - pending_message->unsent_size;
-        int write_result = esp_tls_conn_write(tls_io_instance->esp_tls_handle, buffer, pending_message->unsent_size);
+        write_result = esp_tls_conn_write(tls_io_instance->esp_tls_handle, buffer, pending_message->unsent_size);
         if (write_result > 0)
         {
             pending_message->unsent_size -= write_result;
@@ -444,6 +446,7 @@ static void dowork_send(TLS_IO_INSTANCE* tls_io_instance)
     {
         /* Codes_SRS_TLSIO_30_096: [ If there are no enqueued messages available, tlsio_esp_tls_dowork shall do nothing. ]*/
     }
+    return write_result;
 }
 
 static void tlsio_esp_tls_dowork(CONCRETE_IO_HANDLE tls_io)
@@ -476,8 +479,14 @@ static void tlsio_esp_tls_dowork(CONCRETE_IO_HANDLE tls_io)
             }
             break;
         case TLSIO_STATE_OPEN:
-            dowork_read(tls_io_instance);
-            dowork_send(tls_io_instance);
+            if (dowork_read(tls_io_instance) < 0 && errno != EAGAIN)
+            {
+                tls_io_instance->tlsio_state = TLSIO_STATE_ERROR;
+            }
+            if (dowork_send(tls_io_instance) < 0 && errno != EAGAIN)
+            {
+                tls_io_instance->tlsio_state = TLSIO_STATE_ERROR;
+            }
             break;
         case TLSIO_STATE_ERROR:
             /* Codes_SRS_TLSIO_30_071: [ If the adapter is in TLSIO_STATE_EXT_ERROR then tlsio_dowork shall do nothing. ]*/
