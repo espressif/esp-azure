@@ -1,4 +1,4 @@
-# A MQTT Demo that Connects ESP device to Azure Cloud 
+# ESP Azure IoT SDK
 
 # Table of Contents
 
