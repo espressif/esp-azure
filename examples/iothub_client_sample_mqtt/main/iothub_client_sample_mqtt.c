@@ -175,7 +175,7 @@ void iothub_client_sample_mqtt_run(void)
                 time_t current_time = 0;
                 do
                 {
-                    (void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
+                    //(void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
                     time(&current_time);
                     if ((MESSAGE_COUNT == 0 || iterator < MESSAGE_COUNT)
                         && iterator <= callbackCounter
