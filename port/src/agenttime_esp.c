@@ -18,20 +18,16 @@
 
 #include "lwip/apps/sntp.h"
 
-
 void initialize_sntp(void)
 {
     printf("Initializing SNTP\n");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
- //    sntp_setservername(1, "202.112.29.82");        // set sntp server after got ip address, you had better to adjust the sntp server to your area
     sntp_init();
 }
 
 static void obtain_time(void)
 {
-    //initialize_sntp();
-
     // wait for time to be set
     time_t now = 0;
     struct tm timeinfo = { 0 };
@@ -58,13 +54,8 @@ time_t sntp_get_current_timestamp()
 		// update 'now' variable with current time
 		time(&now);
 	}
-
-	// Set timezone to China Standard Time
-	setenv("TZ", "CST-8CDT-9,M4.2.0/2,M9.2.0/3", 1);
-	tzset();
 	localtime_r(&now, &timeinfo);
 	return now;
-
 }
 
 time_t get_time(time_t* currentTime)

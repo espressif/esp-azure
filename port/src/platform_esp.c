@@ -14,10 +14,6 @@
 
 #include "lwip/apps/sntp.h"
 
-
-//#include "lwip/apps/sntp_time.h"
-#define TICK_RATE CONFIG_FREERTOS_HZ
-
 static const char* TAG = "platform";
 
 time_t sntp_get_current_timestamp();
@@ -34,7 +30,7 @@ int platform_init(void)
 
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
 
     return 0;
 }
