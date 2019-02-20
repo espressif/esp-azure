@@ -1,4 +1,4 @@
-#IoT HUB MQTT Client
+# IoT HUB MQTT Client
 
 # Device Configuration
 

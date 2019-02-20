@@ -1,7 +1,6 @@
-#Device Twin and Direct Method Example
+# Device Twin and Direct Method Example
 
 This example demonstrates Device twin and Direct method feature of Azure IoT.
-
 
 
 ## Device Twin
