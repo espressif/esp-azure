@@ -113,9 +113,11 @@ static void SendConfirmationCallback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, v
     EVENT_INSTANCE* eventInstance = (EVENT_INSTANCE*)userContextCallback;
     size_t id = eventInstance->messageTrackingId;
 
-    (void)printf("Confirmation[%d] received for message tracking id = %d with result = %s\r\n", callbackCounter, (int)id, ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
-    /* Some device specific action code goes here... */
-    callbackCounter++;
+    if (result == IOTHUB_CLIENT_CONFIRMATION_OK) {
+        (void)printf("Confirmation[%d] received for message tracking id = %d with result = %s\r\n", callbackCounter, (int)id, ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
+        /* Some device specific action code goes here... */
+        callbackCounter++;
+    }
     IoTHubMessage_Destroy(eventInstance->messageHandle);
 }
 
@@ -149,9 +151,6 @@ void iothub_client_sample_mqtt_run(void)
             bool traceOn = true;
             IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
 
-            IoTHubClient_LL_SetRetryPolicy(iotHubClientHandle,
-                                           IOTHUB_CLIENT_RETRY_INTERVAL,
-                                           0);
             // Setting the Trusted Certificate.  This is only necessary on system with without
             // built in certificate stores.
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
