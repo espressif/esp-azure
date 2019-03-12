@@ -121,6 +121,12 @@ static void SendConfirmationCallback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, v
     IoTHubMessage_Destroy(eventInstance->messageHandle);
 }
 
+void connection_status_callback(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* userContextCallback)
+{
+    (void)printf("\n\nConnection Status result:%s, Connection Status reason: %s\n\n", ENUM_TO_STRING(IOTHUB_CLIENT_CONNECTION_STATUS, result),
+                 ENUM_TO_STRING(IOTHUB_CLIENT_CONNECTION_STATUS_REASON, reason));
+}
+
 void iothub_client_sample_mqtt_run(void)
 {
     IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle;
@@ -151,6 +157,7 @@ void iothub_client_sample_mqtt_run(void)
             bool traceOn = true;
             IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
 
+            IoTHubClient_LL_SetConnectionStatusCallback(iotHubClientHandle, connection_status_callback, NULL);
             // Setting the Trusted Certificate.  This is only necessary on system with without
             // built in certificate stores.
 #ifdef SET_TRUSTED_CERT_IN_SAMPLES
