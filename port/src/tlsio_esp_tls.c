@@ -36,6 +36,7 @@ typedef struct
 // to minimize memory consumption.
 #define TLSIO_RECEIVE_BUFFER_SIZE 64
 
+#define MAX_RCV_COUNT 5
 
 typedef enum TLSIO_STATE_TAG
 {
@@ -393,12 +394,13 @@ static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     // Putting this buffer in a small function also allows it to exist on the stack
     // rather than adding to heap fragmentation.
     unsigned char buffer[TLSIO_RECEIVE_BUFFER_SIZE];
-    int rcv_bytes = 0;
-
+    int rcv_bytes;
+    int rcv_count = 0;
+    
     if (tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
     {
         rcv_bytes = esp_tls_conn_read(tls_io_instance->esp_tls_handle, buffer, sizeof(buffer));
-        while (rcv_bytes > 0)
+        while (rcv_bytes > 0 && rcv_count++ < MAX_RCV_COUNT)
         {
             // tls_io_instance->on_bytes_received was already checked for NULL
             // in the call to tlsio_esp_tls_open_async
