@@ -394,7 +394,7 @@ static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     // Putting this buffer in a small function also allows it to exist on the stack
     // rather than adding to heap fragmentation.
     unsigned char buffer[TLSIO_RECEIVE_BUFFER_SIZE];
-    int rcv_bytes;
+    int rcv_bytes = 0;
     int rcv_count = 0;
     
     if (tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
