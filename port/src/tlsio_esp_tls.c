@@ -407,7 +407,7 @@ static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
             /* Codes_SRS_TLSIO_30_100: [ As long as the TLS connection is able to provide received data, tlsio_dowork shall repeatedly read this data and call on_bytes_received with the pointer to the buffer containing the data, the number of bytes received, and the on_bytes_received_context. ]*/
             tls_io_instance->on_bytes_received(tls_io_instance->on_bytes_received_context, buffer, rcv_bytes);
             
-            if (++rcv_count > MAX_RCV_COUNT)
+            if (++rcv_count >= MAX_RCV_COUNT)
             {
                 // Read no more than "MAX_RCV_COUNT" times to avoid starvation of other processes.
                 // LogInfo("Skipping further reading to avoid starvation.");
