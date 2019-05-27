@@ -400,12 +400,20 @@ static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     if (tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
     {
         rcv_bytes = esp_tls_conn_read(tls_io_instance->esp_tls_handle, buffer, sizeof(buffer));
-        while (rcv_bytes > 0 && rcv_count++ < MAX_RCV_COUNT)
+        while (rcv_bytes > 0)
         {
             // tls_io_instance->on_bytes_received was already checked for NULL
             // in the call to tlsio_esp_tls_open_async
             /* Codes_SRS_TLSIO_30_100: [ As long as the TLS connection is able to provide received data, tlsio_dowork shall repeatedly read this data and call on_bytes_received with the pointer to the buffer containing the data, the number of bytes received, and the on_bytes_received_context. ]*/
             tls_io_instance->on_bytes_received(tls_io_instance->on_bytes_received_context, buffer, rcv_bytes);
+            
+            if (++rcv_count > MAX_RCV_COUNT)
+            {
+                // Read no more than "MAX_RCV_COUNT" times to avoid starvation of other processes.
+                // LogInfo("Skipping further reading to avoid starvation.");
+                break;
+            }
+            
             rcv_bytes = esp_tls_conn_read(tls_io_instance->esp_tls_handle, buffer, sizeof(buffer));
         }
         /* Codes_SRS_TLSIO_30_102: [ If the TLS connection receives no data then tlsio_dowork shall not call the on_bytes_received callback. ]*/
