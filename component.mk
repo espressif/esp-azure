@@ -67,6 +67,7 @@ azure-iot-sdk-c/c-utility/src/usha.o \
 azure-iot-sdk-c/c-utility/src/vector.o \
 azure-iot-sdk-c/c-utility/src/xio.o \
 azure-iot-sdk-c/c-utility/src/base64.o \
+azure-iot-sdk-c/c-utility/adapters/httpapi_compact.o \
 \
 \
 azure-iot-sdk-c/iothub_client/src/iothub_device_client_ll.o \
@@ -82,6 +83,7 @@ azure-iot-sdk-c/iothub_client/src/iothubtransportmqtt.o \
 azure-iot-sdk-c/iothub_client/src/iothubtransport_mqtt_common.o \
 azure-iot-sdk-c/iothub_client/src/iothub_transport_ll_private.o \
 azure-iot-sdk-c/iothub_client/src/version.o \
+azure-iot-sdk-c/iothub_client/src/blob.o \
 \
 \
 azure-iot-sdk-c/umqtt/src/mqtt_client.o \
