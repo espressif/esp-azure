@@ -1,108 +1,116 @@
 # ESP Azure IoT SDK
 
-# Table of Contents
+## Table of Contents
 
 - [Introduction](#introduction)
-- [Preparation](#preparation)
-- [Configuring and Building](#configuring-and-building)
-- [Checking Result](#checking-result)
+- [Getting Started](#get-started)
+- [Creating an Azure IoT Device](#create-device)
+- [Monitoring Results](#monitoring)
 - [Troubleshooting](#troubleshooting)
 
 ## Introduction
 
-<a name="Introduction"></a>
+<a name="introduction"></a>
 
-Espressif offers a wide range of fully-certified Wi-Fi & BT modules powered by our own advanced SoCs. For more details, see [Espressif Modules](https://www.espressif.com/en/products/hardware/modules).
+The ESP Azure IoT SDK is based on [Azure IoT C SDK](https://github.com/Azure/azure-iot-sdk-c) and enables users to connect their ESP32 based devices to the Azure IoT hub. It provides some examples which can help understand most common use cases.
 
-Azure cloud is one of the most wonderful clouds that collects data from lots of devices or pushes data to IoT devices. For more details, see [Azure IoT Hub](https://www.azure.cn/en-us/home/features/iot-hub/).
+## Getting Started
 
-This demo demonstrates how to firstly connect your device (ESP devices or IoT devices with ESP devices inside) to Azure, using MQTT protocol, then send data to Azure as well as receive message from Azure. 
+<a name="get-started"></a>
 
-Main workflow:
+### Hardware
 
- ![esp-azure-workflow](doc/_static/esp-azure-workflow.png)
+You will basically just need a development host and an [ESP32 development board](https://www.espressif.com/en/products/hardware/development-boards) to get started.
 
-## Preparation 
+### Development Host Setup
 
-<a name="preparation"></a>
+This project is to be used with Espressif's IoT Development Framework, [ESP IDF](https://github.com/espressif/esp-idf). Follow these steps to get started:
 
-### 1. Hardware
-
-- An **ubuntu environment** should be set up to build your demo;
-- Any **[ESP device](https://www.espressif.com/en/products/hardware/modules)** can be used to run your demo.
-
-### 2. Azure IoT Hub
-
-- [Get iothub connection string (primary key)](https://azure.microsoft.com/en-in/services/iot-hub/) from the Azure IoT Hub, which will be used later. An example can be seen below:
-
-```
-HostName=yourname-ms-lot-hub.azure-devices.cn;SharedAccessKeyName=iothubowner;SharedAccessKey=zMeLQ0JTlZXVcHBVOwRFVmlFtcCz+CtbDpUPBWexbIY=
-```
-- For step-by-step instructions, please click [here](doc/IoT_Suite.md).
-
-### 3. Azure CLI
-
-- Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
-
-After that, you should be able to use azure CLI to manage your iot-device.
-
-### 4. Device Connection String
-
-- login to Azure CLI
-- create your device, and get a **device connection string**. An example can be seen:
-
-``` 
-"HostName=esp-hub.azure-devices.net;DeviceId=yourdevice;SharedAccessKey=L7tvFTjFuVTQHtggEtv3rp+tKEJzQLLpDnO0edVGKCg=";
-```
-
-For detailed instruction, please click [Here](doc/azure_cli_iot_hub.md).
- 
-### 5. SDK
-
-- [AZURE-SDK](https://github.com/espressif/esp-azure) can be implemented to connect your ESP devices to Azure, using MQTT protocol.
-- Espressif SDK
-  - For ESP32 platform: [ESP-IDF](https://github.com/espressif/esp-idf)  
-  - For ESP8266 platform: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
-
-### 6. Compiler
-
-- For ESP32 platform: [Here](https://github.com/espressif/esp-idf/blob/master/README.md)
-- For ESP8266 platform: [Here](https://github.com/espressif/ESP8266_RTOS_SDK/blob/master/README.md)
-
-## Configuring and Building
-
-<a name="Configuring_and_Building"></a>
-
-### 1. Cloning Git submodules
-
-This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) for its dependancies. To successfully clone these other repositories, after cloning this repo, use the following command in the root:
+- Setup ESP IDF development environment by following the steps [here](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html).
+- In a separate folder, clone the esp-azure project as follows (please note the --recursive option, which is required to clone the various git submodules required by esp-azure)
 
 ``` bash
-git submodule update --init --recursive
+$ git clone --recursive https://github.com/espressif/esp-azure.git
 ```
 
-## Checking Result
+> Note that if you ever change the branch or the git head of either esp-idf or esp-azure, ensure that all the submodules of the git repo are in sync by executing `git submodule update --init --recursive`
 
-<a name="Checking_Result"></a>
+##
 
-Please check results on both the iothub and device side:
+### Setting up Azure IoT Hub
 
-- az iot hub monitor-events -n [IoTHub Name] --login 'HostName=myhub.azuredevices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=12345'
+- Create an Azure IoT Hub by following the documentation [here](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-create-through-portal).
 
-- ESP device: monitor events with command `make monitor`
+> **Note: When selecting the "Pricing and scale tier", there is also an option to select , F1: Free tier, which should be sufficient for basic evaluation.**
 
-ESP device would send data to the Azure cloud, and then you would be able to receive data at the iothub side.
+- Copy the IoT Hub `Connection string - primary key` from the Azure IoT Hub. This will be required later. The screenshot below will help you locate it.
+![](doc/_static/connection_string.png)
+- Connection string - primary key sample:
+
+```
+HostName=<azure-iot-hub-name>.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=<base64-encoded-access-key>
+```
+
+### Setting up Azure CLI
+
+- Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
+- From your terminal, execute the `az` command to verify that the installation was successful. Output will be like this:
+
+```
+$ az
+
+Welcome to Azure CLI!
+---------------------
+Use `az -h` to see available commands or go to https://aka.ms/cli.
+...
+```
+
+- Install the Azure IoT CLI extension using
+
+`$ az extension add --name azure-cli-iot-ext`
+
+After that, you should be able to use azure CLI to manage your iot-device. A list of useful Azure CLIs can be found [here](doc/azure_cli_iot_hub.md) 
+
+## Creating an Azure IoT Device
+
+<a name="create-device"></a>
+
+- Login to Azure CLI using `$ az login`
+- Create a new device using `$ az iot hub device-identity create -n [IoTHub Name] -d [Device ID]`
+- Get connection string for your device using `$ az iot hub device-identity show-connection-string -n [IoTHub Name] -d [Device ID]`
+- Device connection string sample:
+
+```
+HostName=<azure-iot-hub-name>.azure-devices.net;DeviceId=<azure-iot-device-id>;SharedAccessKey=<base64-encoded-shared-access-key>
+```
+
+- This will be required in the examples
+
+
+
+## Monitoring Results
+
+<a name="monitoring"></a>
+
+To see various events and the data being exchanged between the device and IoT hub from your command line, run the following command:
+
+ `$ az iot hub monitor-events -n [IoTHub Name] --login '[Connection string - primary key]'`
+ 
+ > Note the single quotes for the connection string. Without them, the command wont work as desired.
+ 
+To monitor activity on your ESP device, run:
+
+ `$ make monitor`
 
 ## Troubleshooting
-<a name="Troubleshooting"></a>
+<a name="troubleshooting"></a>
 
 1. Some common problems can be fixed by disabling the firewall.
 
 2. You can try with the followings, if your build fails:
-	- git submodule init
-	- git submodule update
-	- export your compiler path 
-	- export your IDF path
-	- get start from [Here](https://www.espressif.com/en/support/download/documents)
+	- `$ git submodule update --init --recursive`
+	- Check the compiler version and verify that it is the correct one for your ESP IDF version.
+	- Check if the IDF_PATH is set correctly
+	- Clean the project with `make clean` and if required, using `rm -rf build sdkconfig sdkconfig.old`
 	
-3. Make sure the device connection string you are using, which you get from Azure IoT Hub, is correct.
+3. Ensure that the device connection string received from Azure IoT Hub are correct.
