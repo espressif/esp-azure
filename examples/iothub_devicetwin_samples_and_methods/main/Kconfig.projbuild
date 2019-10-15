@@ -16,10 +16,10 @@ config WIFI_PASSWORD
 
 config IOTHUB_CONNECTION_STRING
     string "IOT Hub Device Connection String"
-	default "HostName=<>;SharedAccessKeyName=<>;SharedAccessKey=<>"
+	default ""
     help
-		String containing Hostname, SharedAccessKeyName & SharedAccessKey in the format:
-		
-		You can get this from the Azure IoT Portal
+		String containing Hostname, Device Id & Device Key in the format:
+		HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+		You can get this from the Azure IoT CLI or the Azure Portal.
 
 endmenu
