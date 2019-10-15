@@ -8,7 +8,6 @@ set (COMPONENT_ADD_INCLUDEDIRS
     "inc"
     "${AZURE_IOT_SDK}/certs"
 	"${AZURE_IOT_SDK}/c-utility/inc"
-	"${AZURE_IOT_SDK}/c-utility/inc/azure_c_shared_utility"
 	"${AZURE_IOT_SDK}/c-utility/pal/inc"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos"
 	"${AZURE_IOT_SDK}/c-utility/pal/generic"
@@ -118,7 +117,7 @@ endif()
 
 set (COMPONENT_SUBMODULES "${AZURE_IOT_SDK}")
 
-set(COMPONENT_PRIV_REQUIRES "mbedtls esp-tls")
+set(COMPONENT_PRIV_REQUIRES "mbedtls esp-tls main")
 
 register_component()
 
@@ -135,5 +134,5 @@ component_compile_definitions (
 )
 
 if (CONFIG_DEVICE_COMMON_NAME)
-	add_compile_options(-DUSE_PROV_MODULE)
+	add_definitions(-DUSE_PROV_MODULE)
 endif()
