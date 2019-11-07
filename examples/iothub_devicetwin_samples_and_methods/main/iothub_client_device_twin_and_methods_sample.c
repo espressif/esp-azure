@@ -15,7 +15,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "azure_c_shared_utility/macro_utils.h"
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/platform.h"
 #include "iothub_device_client.h"
