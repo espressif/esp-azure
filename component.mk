@@ -66,7 +66,7 @@ azure-iot-sdk-c/c-utility/src/urlencode.o \
 azure-iot-sdk-c/c-utility/src/usha.o \
 azure-iot-sdk-c/c-utility/src/vector.o \
 azure-iot-sdk-c/c-utility/src/xio.o \
-azure-iot-sdk-c/c-utility/src/base64.o \
+azure-iot-sdk-c/c-utility/src/azure_base64.o \
 azure-iot-sdk-c/c-utility/adapters/httpapi_compact.o \
 \
 \
