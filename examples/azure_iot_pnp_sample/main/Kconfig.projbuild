@@ -1,0 +1,36 @@
+menu "Example Configuration"
+
+config WIFI_SSID
+    string "WiFi SSID"
+	default "myssid"
+	help
+		SSID (network name) for the example to connect to.
+
+config WIFI_PASSWORD
+    string "WiFi Password"
+	default "myssid"
+	help
+		WiFi password (WPA or WPA2) for the example to use.
+
+		Can be left blank if the network has no security set.
+
+config DPS_ID_SCOPE
+    string "Scope ID: A unique value used by the IoT Hub Device Provisioning Service"
+    default "myidscope"
+    help
+        This is the unique ID scope of DPS, and can be found under "Overview"
+        section of your DPS on azure IoT portal
+
+config DEVICE_REGISTRATION_ID
+    string "Device ID: Unique device identifier"
+    default "mydeviceid"
+    help
+        Unique device identify
+
+config DPS_SYMMETRIC_KEY
+    string "Primary Key: Primary device SAS token"
+    default "Symmetric key"
+    help
+        By default, the Device Provisioning Service creates the symmetric keys with a default length of 32 bytes.
+
+endmenu
