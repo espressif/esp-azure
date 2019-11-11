@@ -9,11 +9,14 @@ COMPONENT_ADD_INCLUDEDIRS := \
 port \
 port/inc \
 azure-iot-sdk-c/c-utility/inc \
-azure-iot-sdk-c/c-utility/inc/azure_c_shared_utility \
-azure-iot-sdk-c/c-utility/pal/inc \
-azure-iot-sdk-c/c-utility/pal/freertos \
 azure-iot-sdk-c/c-utility/pal/generic \
+azure-iot-sdk-c/c-utility/pal/freertos \
+azure-iot-sdk-c/c-utility/deps/azure-macro-utils-c/inc \
+azure-iot-sdk-c/c-utility/deps/azure-macro-utils-c/inc/azure_macro_utils \
+azure-iot-sdk-c/c-utility/deps/umock-c/inc \
 azure-iot-sdk-c/iothub_client/inc \
+azure-iot-sdk-c/digitaltwin_client/inc \
+azure-iot-sdk-c/digitaltwin_client/inc/internal \
 azure-iot-sdk-c/serializer/inc \
 azure-iot-sdk-c/umqtt/inc \
 azure-iot-sdk-c/umqtt/inc/azure_umqtt_c \
@@ -28,8 +31,6 @@ endif
  
 COMPONENT_OBJS = \
 azure-iot-sdk-c/c-utility/pal/freertos/lock.o \
-azure-iot-sdk-c/c-utility/pal/dns_async.o \
-azure-iot-sdk-c/c-utility/pal/socket_async.o \
 azure-iot-sdk-c/c-utility/pal/freertos/threadapi.o \
 azure-iot-sdk-c/c-utility/pal/freertos/tickcounter.o \
 azure-iot-sdk-c/c-utility/pal/tlsio_options.o \
@@ -66,7 +67,8 @@ azure-iot-sdk-c/c-utility/src/urlencode.o \
 azure-iot-sdk-c/c-utility/src/usha.o \
 azure-iot-sdk-c/c-utility/src/vector.o \
 azure-iot-sdk-c/c-utility/src/xio.o \
-azure-iot-sdk-c/c-utility/src/base64.o \
+azure-iot-sdk-c/c-utility/src/azure_base64.o \
+azure-iot-sdk-c/c-utility/src/string_token.o \
 \
 \
 azure-iot-sdk-c/iothub_client/src/iothub_device_client_ll.o \
@@ -82,6 +84,18 @@ azure-iot-sdk-c/iothub_client/src/iothubtransportmqtt.o \
 azure-iot-sdk-c/iothub_client/src/iothubtransport_mqtt_common.o \
 azure-iot-sdk-c/iothub_client/src/iothub_transport_ll_private.o \
 azure-iot-sdk-c/iothub_client/src/version.o \
+azure-iot-sdk-c/iothub_client/src/iothub_client_streaming.o \
+\
+\
+azure-iot-sdk-c/digitaltwin_client/src/dt_client_core.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_device.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_device_ll.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_interface_client.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_interface_list.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_lock_thread_binding_impl.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_lock_thread_binding_stub.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_model_definition.o \
+azure-iot-sdk-c/digitaltwin_client/src/dt_version.o \
 \
 \
 azure-iot-sdk-c/umqtt/src/mqtt_client.o \
@@ -115,6 +129,7 @@ azure-iot-sdk-c/provisioning_client/src/prov_device_ll_client.o \
 azure-iot-sdk-c/provisioning_client/src/iothub_security_factory.o \
 azure-iot-sdk-c/provisioning_client/adapters/hsm_client_data.o \
 azure-iot-sdk-c/provisioning_client/adapters/hsm_client_tpm.o \
+azure-iot-sdk-c/provisioning_client/adapters/hsm_client_key.o \
 azure-iot-sdk-c/provisioning_client/src/prov_auth_client.o \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_codec.o \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src/Marshal.o \
@@ -123,7 +138,7 @@ azure-iot-sdk-c/provisioning_client/deps/utpm/src/Memory.o \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_socket_comm.o \
 azure-iot-sdk-c/iothub_client/src/iothub.o \
 azure-iot-sdk-c/c-utility/src/http_proxy_io.o \
-azure-iot-sdk-c/c-utility/src/base32.o \
+azure-iot-sdk-c/c-utility/src/azure_base32.o \
 
 ifdef CONFIG_DEVICE_COMMON_NAME
 COMPONENT_OBJS += azure-iot-sdk-c/provisioning_client/src/iothub_auth_client.o
@@ -146,6 +161,7 @@ azure-iot-sdk-c/c-utility/src \
 azure-iot-sdk-c/c-utility/adapters \
 azure-iot-sdk-c/umqtt/src \
 azure-iot-sdk-c/iothub_client/src \
+azure-iot-sdk-c/digitaltwin_client/src \
 azure-iot-sdk-c/serializer/src \
 azure-iot-sdk-c/deps/parson \
 azure-iot-sdk-c/prov_device_client/src \
@@ -159,7 +175,7 @@ ifndef CONFIG_TARGET_PLATFORM_ESP8266
 COMPONENT_SRCDIRS += azure-iot-sdk-c/certs
 endif
 
-CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_X509 -DHSM_TYPE_SAS_TOKEN
+CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_SYMM_KEY -DHSM_TYPE_SAS_TOKEN
 
 ifdef CONFIG_DEVICE_COMMON_NAME
 CFLAGS += -DUSE_PROV_MODULE
