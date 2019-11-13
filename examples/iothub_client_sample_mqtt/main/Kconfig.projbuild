@@ -16,14 +16,11 @@ config WIFI_PASSWORD
 
 config IOTHUB_CONNECTION_STRING
     string "IOT Hub Device Connection String"
-	default "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"
+	default ""
 	help
 		String containing Hostname, Device Id & Device Key in the format:
-		
 		HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
-		HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>
-
-		You can get this from the iothub-explorer CLI or the Azure Portal
+		You can get this from the Azure IoT CLI or the Azure Portal.
 
 config MESSAGE_INTERVAL_TIME
     int "Time delay in Milliseconds between two consecutive messages"
