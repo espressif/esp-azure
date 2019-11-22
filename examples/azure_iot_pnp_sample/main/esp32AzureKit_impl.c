@@ -204,13 +204,13 @@ char* Deviceinfo_Property_GetProcessorManufacturer()
 int Deviceinfo_Property_GetTotalStorage()
 {
     // TODO: provide implementation here
-    return 16;
+    return 4 * 1024;
 }
 
 int Deviceinfo_Property_GetTotalMemory()
 {
     // TODO: provide implementation here
-    return 8;
+    return 8 * 1024;
 }
 
 bool Sensor_Property_FanSpeedCallback(double fanSpeed)
