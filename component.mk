@@ -161,7 +161,7 @@ ifndef CONFIG_TARGET_PLATFORM_ESP8266
 COMPONENT_SRCDIRS += azure-iot-sdk-c/certs
 endif
 
-CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_X509 -DHSM_TYPE_SAS_TOKEN
+CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initializers -DHSM_TYPE_X509 -DHSM_TYPE_SAS_TOKEN -DHSM_TYPE_SYMM_KEY
 CFLAGS += -Wno-error=maybe-uninitialized -Wno-error=char-subscripts
 
 ifdef CONFIG_DEVICE_COMMON_NAME
