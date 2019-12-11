@@ -40,7 +40,7 @@ This example demonstrates Device Authentication using X.509 CA Certificates. Ref
 	- Generate Certificate Signing Request for the device:
 
 	```
-	$ openssl req -new -key leaf_private_key.key -out leaf.csr
+	$ openssl req -new -key leaf_private_key.pem -out leaf.csr
 	```
 	> You can keep all parameters at defaults (by pressing enter) excpet Common Name (CN). **Give the name which was registered in IoT Hub ([Device ID](#creating-a-device)) as the CN.**
 
@@ -55,10 +55,10 @@ This example demonstrates Device Authentication using X.509 CA Certificates. Ref
 - Click on "Add".
 - Give a User friendly certificate name and add the `rootCA.pem` which was created in the above steps. Click on "Save".
 - Status of this certificate will be "Unverified". To verify this click on the certificate name. Click on `Generate Verification Code` at the bottom under `Certificate Details`. A verification code will be generated, copy it.
-- In the terminal, navigate to directory where `rootCA.pem` was created and run following command to generate a certificate signing request:
+- In the terminal, navigate to directory where `rootCA.key` was created and run following command to generate a certificate signing request:
 
 ```
-	$ openssl req -new -key rootCA.pem -out verification.csr
+	$ openssl req -new -key rootCA.key -out verification.csr
 ```
 > You can keep all parameters at defaults (by pressing enter) except Common Name (CN). **Give the Verification Code copied in previous step as Common Name.**
 
@@ -84,7 +84,7 @@ $ openssl x509 -req -in verification.csr -CA rootCA.pem -CAkey rootCA.key -CAcre
 - Enter the appropriate IoT Hub Device ID. Mark IoT Edge device as "False".
 - Click "Save" at the top.
 - Copy device certificate created earlier (`leaf_certificate.pem`) to `main/certs/`.
-- Copy private key (`leaf_private_key.key`) to `main/certs/`.
+- Copy private key (`leaf_private_key.pem`) to `main/certs/`.
 
 ## Device Configuration
 
