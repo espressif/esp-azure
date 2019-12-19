@@ -72,6 +72,8 @@ azure-iot-sdk-c/c-utility/src/base64.o \
 azure-iot-sdk-c/iothub_client/src/iothub_device_client_ll.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_ll.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_core_ll.o \
+azure-iot-sdk-c/iothub_client/src/iothub_module_client_ll.o \
+azure-iot-sdk-c/iothub_client/src/iothub_module_client.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_ll_uploadtoblob.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_authorization.o \
 azure-iot-sdk-c/iothub_client/src/iothub_client_retry_control.o \
