@@ -16,6 +16,8 @@ set (COMPONENT_ADD_INCLUDEDIRS
 	"${AZURE_IOT_SDK}/umqtt/inc"
 	"${AZURE_IOT_SDK}/umqtt/inc/azure_umqtt_c"
 	"${AZURE_IOT_SDK}/deps/parson"
+	"${AZURE_IOT_SDK}/deps/azure-macro-utils-c/inc"
+	"${AZURE_IOT_SDK}/deps/umock-c/inc"
 	"${AZURE_IOT_SDK}/provisioning_client/inc"
 	"${AZURE_IOT_SDK}/provisioning_client/adapters"
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/inc"
@@ -27,7 +29,7 @@ set (COMPONENT_SRCS
 	"port/src/tlsio_esp_tls.c"
 	"${AZURE_IOT_SDK}/certs/certs.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/lock.c"
-	"${AZURE_IOT_SDK}/c-utility/pal/dns_async.c"
+	"${AZURE_IOT_SDK}/c-utility/pal/agenttime.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/socket_async.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/threadapi.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/tickcounter.c"
@@ -60,7 +62,9 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/c-utility/src/usha.c"
 	"${AZURE_IOT_SDK}/c-utility/src/vector.c"
 	"${AZURE_IOT_SDK}/c-utility/src/xio.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base64.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base32.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base64.c"
+	"${AZURE_IOT_SDK}/c-utility/src/http_proxy_io.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_device_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_core_ll.c"
@@ -107,8 +111,6 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/Memory.c"
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/tpm_socket_comm.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub.c"
-	"${AZURE_IOT_SDK}/c-utility/src/http_proxy_io.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base32.c"
 	)
 
 if (CONFIG_DEVICE_COMMON_NAME)
