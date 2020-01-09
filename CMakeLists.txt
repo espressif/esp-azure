@@ -2,10 +2,10 @@
 # Component Makefile
 #
 
-set (AZURE_IOT_SDK "${CMAKE_CURRENT_LIST_DIR}/../azure-iot-sdk-c")
+set (AZURE_IOT_SDK "${CMAKE_CURRENT_LIST_DIR}/azure-iot-sdk-c")
 
 set (COMPONENT_ADD_INCLUDEDIRS
-    "inc"
+    "port/inc"
     "${AZURE_IOT_SDK}/certs"
 	"${AZURE_IOT_SDK}/c-utility/inc"
 	"${AZURE_IOT_SDK}/c-utility/pal/inc"
@@ -22,9 +22,9 @@ set (COMPONENT_ADD_INCLUDEDIRS
 	)
 
 set (COMPONENT_SRCS
-	"src/agenttime_esp.c"
-	"src/platform_esp.c"
-	"src/tlsio_esp_tls.c"
+	"port/src/agenttime_esp.c"
+	"port/src/platform_esp.c"
+	"port/src/tlsio_esp_tls.c"
 	"${AZURE_IOT_SDK}/certs/certs.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/lock.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/dns_async.c"
