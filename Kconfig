@@ -1,0 +1,7 @@
+menu "Azure IoT Hub SDK"
+    config AZURE_SDK_ENABLE_LOGGING
+    bool "Enable Azure IoT SDK Logging functionalities"
+    default y
+    help
+        Enable or disable all the logging functionalities for Azure IoT Hub SDK.
+endmenu
