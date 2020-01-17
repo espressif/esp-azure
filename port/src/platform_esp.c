@@ -11,18 +11,15 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "esp_log.h"
 #include "tlsio_pal.h"
-
+#include "agenttime_esp.h"
 #include "lwip/apps/sntp.h"
 
-static const char* TAG = "platform";
-
-time_t sntp_get_current_timestamp();
-void initialize_sntp(void);
+static const char* TAG = "esp-azure";
 
 int platform_init(void)
 {
     initialize_sntp();
-    printf("ESP platform sntp inited!\n");
+    ESP_LOGI(TAG, "ESP platform integration initialized!");
     time_t now = sntp_get_current_timestamp();
 
     char strftime_buf[64];
@@ -43,12 +40,14 @@ const IO_INTERFACE_DESCRIPTION* platform_get_default_tlsio(void)
 
 void platform_deinit(void)
 {
-      sntp_stop();
+	ESP_LOGI(TAG, "Shutting down ESP platform integration...");
+    finalize_sntp();
 }
 
 STRING_HANDLE platform_get_platform_info(PLATFORM_INFO_OPTION options)
 {
+	//options is not used at the moment
+	(void)options;
     // Expected format: "(<runtime name>; <operating system name>; <platform>)"
-
     return STRING_construct("(native; freertos; esp platform)");
 }

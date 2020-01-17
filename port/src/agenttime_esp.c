@@ -18,12 +18,30 @@
 
 #include "lwip/apps/sntp.h"
 
+#include "agenttime_esp.h"
+
+static unsigned sntp_initialized = 0;
+
 void initialize_sntp(void)
 {
-    printf("Initializing SNTP\n");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
+	if(!sntp_initialized) {
+		printf("Initializing SNTP\n");
+		sntp_setoperatingmode(SNTP_OPMODE_POLL);
+		sntp_setservername(0, "pool.ntp.org");
+		sntp_init();
+
+		sntp_initialized = 1;
+	}
+}
+
+void finalize_sntp(void)
+{
+	if(sntp_initialized) {
+		printf("Finalizing SNTP\n");
+		sntp_stop();
+
+		sntp_initialized = 0;
+	}
 }
 
 static void obtain_time(void)
