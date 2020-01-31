@@ -15,8 +15,8 @@ set (COMPONENT_ADD_INCLUDEDIRS
 	"${AZURE_IOT_SDK}/serializer/inc"
 	"${AZURE_IOT_SDK}/umqtt/inc"
 	"${AZURE_IOT_SDK}/umqtt/inc/azure_umqtt_c"
-	#"${AZURE_IOT_SDK}/uamqp/inc"
-	#"${AZURE_IOT_SDK}/uamqp/inc/azure_uamqp_c"
+	"${AZURE_IOT_SDK}/uamqp/inc"
+	"${AZURE_IOT_SDK}/uamqp/inc/azure_uamqp_c"
 	"${AZURE_IOT_SDK}/deps/parson"
 	"${AZURE_IOT_SDK}/deps/azure-macro-utils-c/inc"
 	"${AZURE_IOT_SDK}/deps/umock-c/inc"
@@ -198,6 +198,9 @@ component_compile_options (
 	-Wno-unused-function
 	-Wno-missing-braces
 	-Wno-missing-field-initializers
+	-Wno-unknown-pragmas
+	-Wno-unused-variable
+	-Wno-error=enum-compare
 	)
 
 component_compile_definitions (
