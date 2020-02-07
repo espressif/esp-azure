@@ -24,17 +24,28 @@ build_esp32_demo:
     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     - git --version
     - git submodule update --init --recursive
-    - git clone --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+    - git clone --recursive --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+    - export PATH="$IDF_PATH/tools:$PATH"
     - cd esp-idf
-    - ./tools/ci/mirror-submodule-update.sh
+    - source tools/ci/setup_python.sh
+    - source tools/ci/configure_ci_environment.sh
+    - tools/idf_tools.py --non-interactive install && eval "$(tools/idf_tools.py --non-interactive export)" || exit 1
     - cd ..
     - cd examples/iothub_client_sample_mqtt
-    - make defconfig
-    - make
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - echo "CONFIG_COMPILER_OPTIMIZATION_LEVEL_RELEASE=y" >> sdkconfig.defaults
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - idf.py build
     - cd ../../
     - cd examples/prov_dev_client_ll_sample
-    - make defconfig
-    - make
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - echo "CONFIG_COMPILER_OPTIMIZATION_LEVEL_RELEASE=y" >> sdkconfig.defaults
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - idf.py build
 
 build_esp8266_demo:
   stage: build_esp8266

@@ -6,13 +6,7 @@
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 
 COMPONENT_ADD_INCLUDEDIRS := \
-port \
-port/inc \
 azure-iot-sdk-c/c-utility/inc \
-azure-iot-sdk-c/c-utility/inc/azure_c_shared_utility \
-azure-iot-sdk-c/c-utility/pal/inc \
-azure-iot-sdk-c/c-utility/pal/freertos \
-azure-iot-sdk-c/c-utility/pal/generic \
 azure-iot-sdk-c/iothub_client/inc \
 azure-iot-sdk-c/serializer/inc \
 azure-iot-sdk-c/umqtt/inc \
@@ -21,7 +15,13 @@ azure-iot-sdk-c/deps/parson \
 azure-iot-sdk-c/provisioning_client/inc \
 azure-iot-sdk-c/provisioning_client/adapters \
 azure-iot-sdk-c/provisioning_client/deps/utpm/inc \
- 
+
+COMPONENT_PRIV_INCLUDEDIRS := \
+port/inc \
+azure-iot-sdk-c/c-utility/pal/inc \
+azure-iot-sdk-c/c-utility/pal/freertos \
+azure-iot-sdk-c/c-utility/pal/generic \
+
 ifndef CONFIG_TARGET_PLATFORM_ESP8266
 COMPONENT_ADD_INCLUDEDIRS += azure-iot-sdk-c/certs
 endif
@@ -164,3 +164,5 @@ CFLAGS += -Wno-unused-function -Wno-missing-braces -Wno-missing-field-initialize
 ifdef CONFIG_DEVICE_COMMON_NAME
 CFLAGS += -DUSE_PROV_MODULE
 endif
+
+azure-iot-sdk-c/iothub_client/src/iothubtransport_mqtt_common.o: CFLAGS+=-Wno-maybe-uninitialized

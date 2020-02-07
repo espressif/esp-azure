@@ -121,6 +121,11 @@ set(COMPONENT_PRIV_REQUIRES "mbedtls esp-tls main")
 
 register_component()
 
+set_source_files_properties(
+    ${AZURE_IOT_SDK}/iothub_client/src/iothubtransport_mqtt_common.c
+    PROPERTIES COMPILE_FLAGS
+    -Wno-maybe-uninitialized)
+
 component_compile_options (
 	-Wno-unused-function
 	-Wno-missing-braces
