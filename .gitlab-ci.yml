@@ -27,9 +27,8 @@ build_esp32_demo:
     - git clone --recursive --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
     - export PATH="$IDF_PATH/tools:$PATH"
     - cd esp-idf
-    - source tools/ci/setup_python.sh
-    - source tools/ci/configure_ci_environment.sh
-    - tools/idf_tools.py --non-interactive install && eval "$(tools/idf_tools.py --non-interactive export)" || exit 1
+    - ./install.sh
+    - . export.sh
     - cd ..
     - cd examples/iothub_client_sample_mqtt
     - make defconfig && make -j5
@@ -61,7 +60,10 @@ build_esp8266_demo:
     - chmod 600 ~/.ssh/id_rsa
     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     - git --version
-    - git clone --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
+    - git clone --recursive --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
+    - cd ESP8266_RTOS_SDK
+    - source tools/ci/configure_ci_environment.sh
+    - cd ..
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
     - cd examples/iothub_client_sample_mqtt
     - make defconfig
