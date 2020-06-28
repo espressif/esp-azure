@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "tlsio_pal.h"
+#include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/agenttime.h"
@@ -264,14 +265,14 @@ static int tlsio_esp_tls_open_async(CONCRETE_IO_HANDLE tls_io,
     {
         /* Codes_SRS_TLSIO_30_031: [ If the on_io_open_complete parameter is NULL, tlsio_open shall log an error and return FAILURE. ]*/
         LogError("Required parameter on_io_open_complete is NULL");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
         if (tls_io == NULL)
         {
             /* Codes_SRS_TLSIO_30_030: [ If the tlsio_handle parameter is NULL, tlsio_open shall log an error and return FAILURE. ]*/
-            result = __FAILURE__;
+            result = MU_FAILURE;
             LogError("NULL tlsio");
         }
         else
@@ -280,7 +281,7 @@ static int tlsio_esp_tls_open_async(CONCRETE_IO_HANDLE tls_io,
             {
                 /* Codes_SRS_TLSIO_30_032: [ If the on_bytes_received parameter is NULL, tlsio_open shall log an error and return FAILURE. ]*/
                 LogError("Required parameter on_bytes_received is NULL");
-                result = __FAILURE__;
+                result = MU_FAILURE;
             }
             else
             {
@@ -288,7 +289,7 @@ static int tlsio_esp_tls_open_async(CONCRETE_IO_HANDLE tls_io,
                 {
                     /* Codes_SRS_TLSIO_30_033: [ If the on_io_error parameter is NULL, tlsio_open shall log an error and return FAILURE. ]*/
                     LogError("Required parameter on_io_error is NULL");
-                    result = __FAILURE__;
+                    result = MU_FAILURE;
                 }
                 else
                 {
@@ -298,7 +299,7 @@ static int tlsio_esp_tls_open_async(CONCRETE_IO_HANDLE tls_io,
                     {
                         /* Codes_SRS_TLSIO_30_037: [ If the adapter is in any state other than TLSIO_STATE_EXT_CLOSED when tlsio_open  is called, it shall log an error, and return FAILURE. ]*/
                         LogError("Invalid tlsio_state. Expected state is TLSIO_STATE_CLOSED.");
-                        result = __FAILURE__;
+                        result = MU_FAILURE;
                     }
                     else
                     {
@@ -346,7 +347,7 @@ static int tlsio_esp_tls_close_async(CONCRETE_IO_HANDLE tls_io, ON_IO_CLOSE_COMP
     {
         /* Codes_SRS_TLSIO_30_050: [ If the tlsio_handle parameter is NULL, tlsio_esp_tls_close_async shall log an error and return FAILURE. ]*/
         LogError("NULL tlsio");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
@@ -354,7 +355,7 @@ static int tlsio_esp_tls_close_async(CONCRETE_IO_HANDLE tls_io, ON_IO_CLOSE_COMP
         {
             /* Codes_SRS_TLSIO_30_055: [ If the on_io_close_complete parameter is NULL, tlsio_esp_tls_close_async shall log an error and return FAILURE. ]*/
             LogError("NULL on_io_close_complete");
-            result = __FAILURE__;
+            result = MU_FAILURE;
         }
         else
         {
@@ -515,7 +516,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
     if (on_send_complete == NULL)
     {
         /* Codes_SRS_TLSIO_30_062: [ If the on_send_complete is NULL, tlsio_esp_tls_send_async shall log the error and return FAILURE. ]*/
-        result = __FAILURE__;
+        result = MU_FAILURE;
         LogError("NULL on_send_complete");
     }
     else
@@ -523,7 +524,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
         if (tls_io == NULL)
         {
             /* Codes_SRS_TLSIO_30_060: [ If the tlsio_handle parameter is NULL, tlsio_esp_tls_send_async shall log an error and return FAILURE. ]*/
-            result = __FAILURE__;
+            result = MU_FAILURE;
             LogError("NULL tlsio");
         }
         else
@@ -531,7 +532,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
             if (buffer == NULL)
             {
                 /* Codes_SRS_TLSIO_30_061: [ If the buffer is NULL, tlsio_esp_tls_send_async shall log the error and return FAILURE. ]*/
-                result = __FAILURE__;
+                result = MU_FAILURE;
                 LogError("NULL buffer");
             }
             else
@@ -539,7 +540,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                 if (size == 0)
                 {
                     /* Codes_SRS_TLSIO_30_067: [ If the  size  is 0,  tlsio_send  shall log the error and return FAILURE. ]*/
-                    result = __FAILURE__;
+                    result = MU_FAILURE;
                     LogError("0 size");
                 }
                 else
@@ -547,7 +548,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                     TLS_IO_INSTANCE* tls_io_instance = (TLS_IO_INSTANCE*)tls_io;
                     if (tls_io_instance->tlsio_state != TLSIO_STATE_OPEN)
                     {
-                        result = __FAILURE__;
+                        result = MU_FAILURE;
                         LogError("tlsio_esp_tls_send_async without a prior successful open");
                     }
                     else
@@ -556,7 +557,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                         if (pending_transmission == NULL)
                         {
                             /* Codes_SRS_TLSIO_30_064: [ If the supplied message cannot be enqueued for transmission, tlsio_esp_tls_send shall log an error and return FAILURE. ]*/
-                            result = __FAILURE__;
+                            result = MU_FAILURE;
                             LogError("malloc failed");
                         }
                         else
@@ -569,7 +570,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                                 /* Codes_SRS_TLSIO_30_064: [ If the supplied message cannot be enqueued for transmission, tlsio_esp_tls_send shall log an error and return FAILURE. ]*/
                                 LogError("malloc failed");
                                 free(pending_transmission);
-                                result = __FAILURE__;
+                                result = MU_FAILURE;
                             }
                             else
                             {
@@ -585,7 +586,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                                     LogError("Unable to add socket to pending list.");
                                     free(pending_transmission->bytes);
                                     free(pending_transmission);
-                                    result = __FAILURE__;
+                                    result = MU_FAILURE;
                                 }
                                 else
                                 {
@@ -612,7 +613,7 @@ static int tlsio_esp_tls_setoption(CONCRETE_IO_HANDLE tls_io, const char* option
     if (tls_io_instance == NULL)
     {
         LogError("NULL tlsio");
-        result = __FAILURE__;
+        result = MU_FAILURE;
     }
     else
     {
@@ -623,7 +624,7 @@ static int tlsio_esp_tls_setoption(CONCRETE_IO_HANDLE tls_io, const char* option
         if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
         {
             LogError("Failed tlsio_options_set");
-            result = __FAILURE__;
+            result = MU_FAILURE;
         }
         else
         {
