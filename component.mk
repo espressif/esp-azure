@@ -7,6 +7,8 @@ CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 
 COMPONENT_ADD_INCLUDEDIRS := \
 azure-iot-sdk-c/c-utility/inc \
+azure-iot-sdk-c/c-utility/deps/azure-macro-utils-c/inc \
+azure-iot-sdk-c/c-utility/deps/umock-c/inc \
 azure-iot-sdk-c/iothub_client/inc \
 azure-iot-sdk-c/serializer/inc \
 azure-iot-sdk-c/umqtt/inc \
@@ -28,7 +30,6 @@ endif
  
 COMPONENT_OBJS = \
 azure-iot-sdk-c/c-utility/pal/freertos/lock.o \
-azure-iot-sdk-c/c-utility/pal/dns_async.o \
 azure-iot-sdk-c/c-utility/pal/socket_async.o \
 azure-iot-sdk-c/c-utility/pal/freertos/threadapi.o \
 azure-iot-sdk-c/c-utility/pal/freertos/tickcounter.o \
@@ -66,7 +67,7 @@ azure-iot-sdk-c/c-utility/src/urlencode.o \
 azure-iot-sdk-c/c-utility/src/usha.o \
 azure-iot-sdk-c/c-utility/src/vector.o \
 azure-iot-sdk-c/c-utility/src/xio.o \
-azure-iot-sdk-c/c-utility/src/base64.o \
+azure-iot-sdk-c/c-utility/src/azure_base64.o \
 \
 \
 azure-iot-sdk-c/iothub_client/src/iothub_device_client_ll.o \
@@ -123,7 +124,7 @@ azure-iot-sdk-c/provisioning_client/deps/utpm/src/Memory.o \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_socket_comm.o \
 azure-iot-sdk-c/iothub_client/src/iothub.o \
 azure-iot-sdk-c/c-utility/src/http_proxy_io.o \
-azure-iot-sdk-c/c-utility/src/base32.o \
+azure-iot-sdk-c/c-utility/src/azure_base32.o \
 
 ifdef CONFIG_DEVICE_COMMON_NAME
 COMPONENT_OBJS += azure-iot-sdk-c/provisioning_client/src/iothub_auth_client.o
