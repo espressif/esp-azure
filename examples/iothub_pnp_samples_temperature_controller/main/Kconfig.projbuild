@@ -26,6 +26,34 @@ choice IOTHUB_AUTH_CHOOSE
             bool "Device Key"
 endchoice
 
+config IOTHUB_DPS_ENABLE
+    bool "Azure IoT Device Provisioning Service function."
+    default false
+    help
+        Enable the Azure IoT Hub Device Provisioning Service or Disable.
+
+config IOTHUB_ENDPOINT
+    string "IOT Hub Device End Point"
+    default ""
+    depends on IOTHUB_DPS_ENABLE
+    help
+        ENDPOINT, You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_REGISTRATION_ID
+    string "Registration ID of Device"
+    default ""
+    depends on IOTHUB_DPS_ENABLE
+    help
+        Device Common name of Leaf Certificate when choose certificate authenticate.
+
+config IOTHUB_ID_SCOPE
+    string "ID Scope of Device provisioning Service"
+    default ""
+    depends on IOTHUB_DPS_ENABLE
+    help
+        This is the unique ID scope of Device Provisioning Service (DPS), and can be found under "Overview"
+        section of your DPS on azure IoT portal
+
 config IOTHUB_HOST_NAME
     string "IOT Hub Device Host Name"
 	default ""
@@ -52,10 +80,16 @@ config IOTHUB_DEVICE_KEY
         You can get this from the Azure IoT CLI or the Azure Portal.
 
 config IOTHUB_MODULE_ID
-        string "IOT Hub Device Module ID"
-        default ""
-        help
-            Module ID, You can get this from the Azure IoT CLI or the Azure Portal.
+            string "IOT Hub Device Module ID"
+            default ""
+            help
+                Module ID which define the device capabilities, You can get this from the https://devicemodels.azureiotsolutions.com.
+
+config IOTHUB_PROPERTY
+            bool "IOT Hub Device Property"
+            default n
+            help
+                Enable or Disable the device's properties when send to or receive from cloud.
 
 config IOTHUB_WAIT_OPTION
         int "Time wait in Milliseconds between two consecutive messages"

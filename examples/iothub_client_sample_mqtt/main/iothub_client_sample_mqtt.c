@@ -3,245 +3,296 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-#include "iothub_client.h"
-#include "iothub_device_client_ll.h"
-#include "iothub_client_options.h"
-#include "iothub_message.h"
-#include "azure_c_shared_utility/threadapi.h"
-#include "azure_c_shared_utility/crt_abstractions.h"
-#include "azure_c_shared_utility/platform.h"
-#include "azure_c_shared_utility/shared_util_options.h"
-#include "iothubtransportmqtt.h"
-#include "iothub_client_options.h"
-#include "esp_system.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_azure_iot.h"
+#include "esp_azure_iot_hub_client.h"
 
-#ifdef MBED_BUILD_TIMESTAMP
-    #define SET_TRUSTED_CERT_IN_SAMPLES
-#endif // MBED_BUILD_TIMESTAMP
+/* Define the Azure IOT task stack and priority.  */
+#ifndef ESP_AZURE_IOT_STACK_SIZE
+#define ESP_AZURE_IOT_STACK_SIZE                     (2048)
+#endif /* ESP_AZURE_IOT_STACK_SIZE */
 
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-    #include "certs.h"
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
+#ifndef ESP_AZURE_IOT_THREAD_PRIORITY
+#define ESP_AZURE_IOT_THREAD_PRIORITY                (3)
+#endif /* ESP_AZURE_IOT_THREAD_PRIORITY */
 
-/*String containing Hostname, Device Id & Device Key in the format:                         */
-/*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>"                */
-/*  "HostName=<host_name>;DeviceId=<device_id>;SharedAccessSignature=<device_sas_token>"    */
-#define EXAMPLE_IOTHUB_CONNECTION_STRING CONFIG_IOTHUB_CONNECTION_STRING
-static const char* connectionString = EXAMPLE_IOTHUB_CONNECTION_STRING;
+#ifndef SAMPLE_HOST_NAME
+#define SAMPLE_HOST_NAME                        CONFIG_IOTHUB_HOST_NAME
+#endif /* SAMPLE_HOST_NAME */
 
-static int callbackCounter;
-static char msgText[1024];
-static char propText[1024];
-static bool g_continueRunning;
-#define MESSAGE_COUNT CONFIG_MESSAGE_COUNT
-#define DOWORK_LOOP_NUM     3
+#ifndef SAMPLE_DEVICE_ID
+#define SAMPLE_DEVICE_ID                        CONFIG_IOTHUB_DEVICE_ID
+#endif /* SAMPLE_DEVICE_ID */
 
-typedef struct EVENT_INSTANCE_TAG
+/* Optional DEVICE KEY.  */
+#ifndef SAMPLE_DEVICE_KEY
+#define SAMPLE_DEVICE_KEY                       CONFIG_IOTHUB_DEVICE_KEY
+#endif /* SAMPLE_DEVICE_KEY */
+
+/* Optional module ID.  */
+#ifndef SAMPLE_MODULE_ID
+#define SAMPLE_MODULE_ID                        CONFIG_IOTHUB_MODULE_ID
+#endif /* SAMPLE_MODULE_ID */
+
+#ifndef SAMPLE_IOTHUB_WAIT_OPTION
+#define SAMPLE_IOTHUB_WAIT_OPTION               CONFIG_IOTHUB_WAIT_OPTION
+#endif /* SAMPLE_IOTHUB_WAIT_OPTION */
+
+#if CONFIG_IOTHUB_PROPERTY
+
+/* Define sample properties count. */
+#define MAX_PROPERTY_COUNT                          2
+
+/* Define sample properties.  */
+static const char *sample_properties[MAX_PROPERTY_COUNT][2] = {{"propertyA", "valueA"},
+                                                               {"propertyB", "valueB"}};
+
+#endif
+
+static uint32_t unix_time_get(size_t *unix_time)
 {
-    IOTHUB_MESSAGE_HANDLE messageHandle;
-    size_t messageTrackingId;  // For tracking the messages within the user callback.
-} EVENT_INSTANCE;
 
-static IOTHUBMESSAGE_DISPOSITION_RESULT ReceiveMessageCallback(IOTHUB_MESSAGE_HANDLE message, void* userContextCallback)
+    /* Using time() to get unix time.
+       Note: User needs to implement own time function to get the real time on device, such as: SNTP.  */
+    *unix_time = (size_t)time(NULL);
+
+    return(ESP_OK);
+}
+
+static void printf_packet(ESP_PACKET *packet_ptr)
 {
-    int* counter = (int*)userContextCallback;
-    const char* buffer;
-    size_t size;
-    MAP_HANDLE mapProperties;
-    const char* messageId;
-    const char* correlationId;
-
-    // Message properties
-    if ((messageId = IoTHubMessage_GetMessageId(message)) == NULL)
+    while (packet_ptr != NULL)
     {
-        messageId = "<null>";
+        printf("%.*s", (int16_t)(packet_ptr -> esp_packet_append_ptr - packet_ptr -> esp_packet_prepend_ptr),
+               (char *)packet_ptr -> esp_packet_prepend_ptr);
+        packet_ptr = packet_ptr -> esp_packet_next;
+    }
+}
+
+static void connection_status_callback(ESP_AZURE_IOT_HUB_CLIENT *hub_client_ptr, uint32_t status)
+{
+    ESP_PARAMETER_NOT_USED(hub_client_ptr);
+    switch (status) {
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_CONNECTED:
+            printf("Connected to IoTHub.\r\n");
+            break;
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_NOT_CONNECTED:
+            printf("Disconnected from IoTHub!: error code = 0x%08x\r\n", status);
+            break;
+        default:
+            break;
+    }
+}
+
+static void iot_hub_client_sample_mqtt(ESP_AZURE_IOT_HUB_CLIENT *iothub_client)
+{
+    uint32_t i = 0, index_count = 0;
+    uint32_t status = 0;
+    char buffer[30];
+    uint32_t buffer_length;
+    ESP_PACKET *packet_ptr;
+
+#if CONFIG_IOTHUB_PROPERTY
+    uint16_t property_buf_size;
+    uint8_t *property_buf;
+#endif
+
+    bool sammple_session = false;
+
+    if ((status = esp_azure_iot_hub_client_cloud_message_enable(iothub_client)))
+    {
+        printf("C2D receive enable failed!: error code = 0x%08x\r\n", status);
+        return;
     }
 
-    if ((correlationId = IoTHubMessage_GetCorrelationId(message)) == NULL)
-    {
-        correlationId = "<null>";
-    }
-
-    // Message content
-    if (IoTHubMessage_GetByteArray(message, (const unsigned char**)&buffer, &size) != IOTHUB_MESSAGE_OK)
-    {
-        (void)printf("unable to retrieve the message data\r\n");
-    }
-    else
-    {
-        (void)printf("Received Message [%d]\r\n Message ID: %s\r\n Correlation ID: %s\r\n Data: <<<%.*s>>> & Size=%d\r\n", *counter, messageId, correlationId, (int)size, buffer, (int)size);
-        // If we receive the work 'quit' then we stop running
-        if (size == (strlen("quit") * sizeof(char)) && memcmp(buffer, "quit", size) == 0)
+    /* Loop to send telemetry message and receive c2d message.  */
+    while (index_count ++ < 100) {
+        
+        /* Create a telemetry message packet. */
+        sammple_session = false;
+        if ((status = esp_azure_iot_hub_client_telemetry_message_create(iothub_client, &packet_ptr, portMAX_DELAY)))
         {
-            g_continueRunning = false;
+            printf("Telemetry message create failed!: error code = 0x%08x\r\n", status);
+            break;
         }
-    }
-
-    // Retrieve properties from the message
-    mapProperties = IoTHubMessage_Properties(message);
-    if (mapProperties != NULL)
-    {
-        const char*const* keys;
-        const char*const* values;
-        size_t propertyCount = 0;
-        if (Map_GetInternals(mapProperties, &keys, &values, &propertyCount) == MAP_OK)
+#if CONFIG_IOTHUB_PROPERTY
+        /* Add properties to telemetry message. */
+        for (int index = 0; index < MAX_PROPERTY_COUNT; index++)
         {
-            if (propertyCount > 0)
+            if ((status = esp_azure_iot_hub_client_telemetry_property_add(packet_ptr,
+                                                                   (uint8_t *)sample_properties[index][0],
+                                                                   (uint16_t)strlen(sample_properties[index][0]),
+                                                                   (uint8_t *)sample_properties[index][1],
+                                                                   (uint16_t)strlen(sample_properties[index][1]),
+                                                                   portMAX_DELAY)))
             {
-                size_t index;
-
-                printf(" Message Properties:\r\n");
-                for (index = 0; index < propertyCount; index++)
-                {
-                    (void)printf("\tKey: %s Value: %s\r\n", keys[index], values[index]);
-                }
-                (void)printf("\r\n");
+                printf("Telemetry property add failed!: error code = 0x%08x\r\n", status);
+                break;
             }
         }
+        
+        if (status)
+        {
+            esp_azure_iot_hub_client_telemetry_message_delete(packet_ptr);
+            break;
+        }
+#endif
+
+        buffer_length = (uint32_t)snprintf(buffer, sizeof(buffer), "{\"Message ID\":%u}", i++);
+        if (esp_azure_iot_hub_client_telemetry_send(iothub_client, packet_ptr, (uint8_t *)buffer, buffer_length, portMAX_DELAY))
+        {
+            printf("Telemetry message send failed!: error code = 0x%08x\r\n", status);
+            break;
+        }
+        printf("Telemetry message send: %s.\r\n", buffer);
+        esp_azure_iot_hub_client_telemetry_message_delete(packet_ptr);
+        packet_ptr = NULL;
+
+        /* Wait for receive message from cloud.  */
+        sammple_session = true;
+        if ((status = esp_azure_iot_hub_client_cloud_message_receive(iothub_client, &packet_ptr, SAMPLE_IOTHUB_WAIT_OPTION)))
+        {
+            if (status != ESP_AZURE_IOT_NO_PACKET) {
+                printf("C2D receive failed!: error code = 0x%08x\r\n", status);
+                break;
+            }
+        } else {
+#if CONFIG_IOTHUB_PROPERTY
+            for (int index = 0; index < MAX_PROPERTY_COUNT; index ++) {
+                if ((status = esp_azure_iot_hub_client_cloud_message_property_get(iothub_client, packet_ptr,
+                                                                                (uint8_t *)sample_properties[index][0],
+                                                                                (uint16_t)strlen(sample_properties[index][0]),
+                                                                                &property_buf, &property_buf_size)))
+                {
+                    printf("Property [%s] not found: 0x%08x\r\n", sample_properties[index][0], status);
+                }
+                else
+                {
+                    printf("Receive property: %s = %.*s\r\n", sample_properties[index][0],
+                        (int16_t)property_buf_size, property_buf);
+                }
+            }
+#endif
+            printf("Receive message:");
+            printf_packet(packet_ptr);
+            printf("\r\n");
+
+            esp_azure_iot_packet_release(packet_ptr);
+        }
     }
 
-    /* Some device specific action code goes here... */
-    (*counter)++;
-    return IOTHUBMESSAGE_ACCEPTED;
-}
-
-static void SendConfirmationCallback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, void* userContextCallback)
-{
-    EVENT_INSTANCE* eventInstance = (EVENT_INSTANCE*)userContextCallback;
-    size_t id = eventInstance->messageTrackingId;
-
-    if (result == IOTHUB_CLIENT_CONFIRMATION_OK) {
-        (void)printf("Confirmation[%d] received for message tracking id = %d with result = %s\r\n", callbackCounter, (int)id, MU_ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
-        /* Some device specific action code goes here... */
-        callbackCounter++;
+    if (sammple_session) {
+        esp_azure_iot_packet_release(packet_ptr);
+    } else {
+        esp_azure_iot_hub_client_telemetry_message_delete(packet_ptr);
     }
-    IoTHubMessage_Destroy(eventInstance->messageHandle);
+
 }
 
-void connection_status_callback(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* userContextCallback)
+void iothub_client_sample_mqtt_run(void) 
 {
-    (void)printf("\n\nConnection Status result:%s, Connection Status reason: %s\n\n", MU_ENUM_TO_STRING(IOTHUB_CLIENT_CONNECTION_STATUS, result),
-                 MU_ENUM_TO_STRING(IOTHUB_CLIENT_CONNECTION_STATUS_REASON, reason));
-}
+    uint32_t                    status = 0;
+    ESP_AZURE_IOT               *esp_azure_iot;
+    ESP_AZURE_IOT_HUB_CLIENT    *iothub_client;
+    uint8_t *iothub_hostname = (uint8_t *)SAMPLE_HOST_NAME;
+    uint8_t *iothub_device_id = (uint8_t *)SAMPLE_DEVICE_ID;
+    uint32_t iothub_hostname_length = sizeof(SAMPLE_HOST_NAME) - 1;
+    uint32_t iothub_device_id_length = sizeof(SAMPLE_DEVICE_ID) - 1;
 
-void iothub_client_sample_mqtt_run(void)
-{
-    IOTHUB_CLIENT_LL_HANDLE iotHubClientHandle;
-
-    EVENT_INSTANCE message;
-
-    g_continueRunning = true;
-    srand((unsigned int)time(NULL));
-    double avgWindSpeed = 10.0;
-    double minTemperature = 20.0;
-    double minHumidity = 60.0;
-
-    callbackCounter = 0;
-    int receiveContext = 0;
-
-    if (platform_init() != 0)
-    {
+    /* Init Azure IoT Time Handle */
+    if (esp_azure_iot_time_init()) {
         (void)printf("Failed to initialize the platform.\r\n");
-    }
-    else
-    {
-        if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, MQTT_Protocol)) == NULL)
-        {
-            (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
+        return;
+    } 
+    
+    while (1) {
+        esp_azure_iot = calloc(1, sizeof(ESP_AZURE_IOT));
+        iothub_client = calloc(1, sizeof(ESP_AZURE_IOT_HUB_CLIENT));
+        if (!esp_azure_iot || !iothub_client) {
+            printf("Failed to initialize the azure.\r\n");
+            break;
         }
-        else
-        {
-            bool traceOn = true;
-            IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
-
-            IoTHubClient_LL_SetConnectionStatusCallback(iotHubClientHandle, connection_status_callback, NULL);
-            // Setting the Trusted Certificate.  This is only necessary on system with without
-            // built in certificate stores.
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-            IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, OPTION_TRUSTED_CERT, certificates);
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
-
-            /* Setting Message call back, so we can receive Commands. */
-            if (IoTHubClient_LL_SetMessageCallback(iotHubClientHandle, ReceiveMessageCallback, &receiveContext) != IOTHUB_CLIENT_OK)
+        
+        do {
+            /* Create Azure IoT handler.  */
+            if ((status = esp_azure_iot_create(esp_azure_iot, (uint8_t *)"Azure IoT", ESP_AZURE_IOT_STACK_SIZE,
+                                            ESP_AZURE_IOT_THREAD_PRIORITY, unix_time_get)))
             {
-                (void)printf("ERROR: IoTHubClient_LL_SetMessageCallback..........FAILED!\r\n");
+                printf("Failed on esp_azure_iot_create!: error code = 0x%08x\r\n", status);
+                break;
             }
-            else
+            
+            /* Initialize IoTHub client. */
+            if ((status = esp_azure_iot_hub_client_initialize(iothub_client, esp_azure_iot,
+                                                            iothub_hostname, iothub_hostname_length,
+                                                            iothub_device_id, iothub_device_id_length,
+                                                            (uint8_t *)SAMPLE_MODULE_ID, sizeof(SAMPLE_MODULE_ID) - 1,
+                                                            NULL)))
             {
-                (void)printf("IoTHubClient_LL_SetMessageCallback...successful.\r\n");
-
-                /* Now that we are ready to receive commands, let's send some messages */
-                int iterator = 0;
-                double temperature = 0;
-                double humidity = 0;
-                time_t sent_time = 0;
-                time_t current_time = 0;
-                do
-                {
-                    //(void)printf("iterator: [%d], callbackCounter: [%d]. \r\n", iterator, callbackCounter);
-                    time(&current_time);
-                    if ((MESSAGE_COUNT == 0 || iterator < MESSAGE_COUNT)
-                        && iterator <= callbackCounter
-                        && (difftime(current_time, sent_time) > ((CONFIG_MESSAGE_INTERVAL_TIME) / 1000)))
-                    {
-                        temperature = minTemperature + (rand() % 10);
-                        humidity = minHumidity +  (rand() % 20);
-                        sprintf_s(msgText, sizeof(msgText), "{\"deviceId\":\"myFirstDevice\",\"windSpeed\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f}", avgWindSpeed + (rand() % 4 + 2), temperature, humidity);
-                        if ((message.messageHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText))) == NULL)
-                        {
-                            (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
-                        }
-                        else
-                        {
-                            message.messageTrackingId = iterator;
-                            MAP_HANDLE propMap = IoTHubMessage_Properties(message.messageHandle);
-                            (void)sprintf_s(propText, sizeof(propText), temperature > 28 ? "true" : "false");
-                            if (Map_AddOrUpdate(propMap, "temperatureAlert", propText) != MAP_OK)
-                            {
-                                (void)printf("ERROR: Map_AddOrUpdate Failed!\r\n");
-                            }
-
-                            if (IoTHubClient_LL_SendEventAsync(iotHubClientHandle, message.messageHandle, SendConfirmationCallback, &message) != IOTHUB_CLIENT_OK)
-                            {
-                                (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
-                            }
-                            else
-                            {
-                                time(&sent_time);
-                                (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%d] for transmission to IoT Hub.\r\n", (int)iterator);
-                            }
-                        }
-                        iterator++;
-                    }
-                    IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(10);
-
-                    if (MESSAGE_COUNT != 0 && callbackCounter >= MESSAGE_COUNT)
-                    {
-                        printf("exit\n");
-                        break;
-                    }
-                } while (g_continueRunning);
-
-                (void)printf("iothub_client_sample_mqtt has gotten quit message, call DoWork %d more time to complete final sending...\r\n", DOWORK_LOOP_NUM);
-                size_t index = 0;
-                for (index = 0; index < DOWORK_LOOP_NUM; index++)
-                {
-                    IoTHubClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(1);
-                }
+                printf("Failed on esp_azure_iot_hub_client_initialize!: error code = 0x%08x\r\n", status);
+                break;
             }
-            IoTHubClient_LL_Destroy(iotHubClientHandle);
+
+#if CONFIG_IOTHUB_USING_CERTIFICATE
+
+            /* Initialize the device certificate.  */
+            if ((status = esp_secure_x509_certificate_initialize(&device_certificate, device_cert, sizeof(device_cert),
+                                                                    NULL, 0, device_private_key, sizeof(device_private_key),
+                                                                    DEVICE_KEY_TYPE)))
+            {
+                printf("Failed on esp_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+            /* Set device certificate.  */
+            if ((status = esp_azure_iot_hub_client_device_cert_set(iothub_client, &device_certificate)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_device_cert_set!: error code = 0x%08x\r\n", status);
+                break;
+            }
+#else
+
+            /* Set symmetric key.  */
+            if ((status = esp_azure_iot_hub_client_symmetric_key_set(iothub_client, (uint8_t *)SAMPLE_DEVICE_KEY, sizeof(SAMPLE_DEVICE_KEY) - 1)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_symmetric_key_set!\r\n");
+                break;
+            }
+#endif /* USE_DEVICE_CERTIFICATE */
+
+            /* Set connection status callback. */
+            if (esp_azure_iot_hub_client_connection_status_callback_set(iothub_client, connection_status_callback))
+            {
+                printf("Failed on connection_status_callback!\r\n");
+            }
+
+            /* Connect to IoTHub client. */
+            if (esp_azure_iot_hub_client_connect(iothub_client, true, portMAX_DELAY))
+            {
+                printf("Failed on esp_azure_iot_hub_client_connect!\r\n");
+            }
+
+            /* Run MQTT sample. */
+            iot_hub_client_sample_mqtt(iothub_client);
+
+        } while (0);
+
+        /* Destroy IoTHub Client.  */
+        esp_azure_iot_hub_client_disconnect(iothub_client);
+        esp_azure_iot_hub_client_deinitialize(iothub_client);
+        esp_azure_iot_delete(esp_azure_iot);
+
+        /* Destory azure iot.  */
+        if (iothub_client) {
+            free(iothub_client);
+            iothub_client = NULL;
         }
-        platform_deinit();
-    }
-}
 
-int main(void)
-{
-    iothub_client_sample_mqtt_run();
-    return 0;
+        if (esp_azure_iot) {
+            free(esp_azure_iot);
+            esp_azure_iot = NULL;
+        }
+    }
+    
 }

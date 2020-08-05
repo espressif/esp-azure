@@ -1,382 +1,296 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-// This sample shows how to translate the Device Twin json received from Azure IoT Hub into meaningful data for your application.
-// It uses the parson library, a very lightweight json parser.
-
-// There is an analogous sample using the serializer - which is a library provided by this SDK to help parse json - in devicetwin_simplesample.
-// Most applications should use this sample, not the serializer.
-
-// WARNING: Check the return of all API calls when developing your solution. Return checks ommited for sample simplification.
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
+#include <time.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "azure_macro_utils/macro_utils.h"
-#include "azure_c_shared_utility/threadapi.h"
-#include "azure_c_shared_utility/platform.h"
-#include "iothub_device_client.h"
-#include "iothub_client_options.h"
-#include "iothub.h"
-#include "iothub_message.h"
-#include "parson.h"
-#include "sdkconfig.h"
+#include "esp_azure_iot.h"
+#include "esp_azure_iot_hub_client.h"
 
-// The protocol you wish to use should be uncommented
-//
-#define SAMPLE_MQTT
-//#define SAMPLE_MQTT_OVER_WEBSOCKETS
-//#define SAMPLE_AMQP
-//#define SAMPLE_AMQP_OVER_WEBSOCKETS
-//#define SAMPLE_HTTP
+/* Define the Azure IOT task stack and priority.  */
+#ifndef ESP_AZURE_IOT_STACK_SIZE
+#define ESP_AZURE_IOT_STACK_SIZE                     (2048)
+#endif /* ESP_AZURE_IOT_STACK_SIZE */
 
-#ifdef SAMPLE_MQTT
-    #include "iothubtransportmqtt.h"
-#endif // SAMPLE_MQTT
-#ifdef SAMPLE_MQTT_OVER_WEBSOCKETS
-    #include "iothubtransportmqtt_websockets.h"
-#endif // SAMPLE_MQTT_OVER_WEBSOCKETS
-#ifdef SAMPLE_AMQP
-    #include "iothubtransportamqp.h"
-#endif // SAMPLE_AMQP
-#ifdef SAMPLE_AMQP_OVER_WEBSOCKETS
-    #include "iothubtransportamqp_websockets.h"
-#endif // SAMPLE_AMQP_OVER_WEBSOCKETS
-#ifdef SAMPLE_HTTP
-    #include "iothubtransporthttp.h"
-#endif // SAMPLE_HTTP
+#ifndef ESP_AZURE_IOT_THREAD_PRIORITY
+#define ESP_AZURE_IOT_THREAD_PRIORITY                (3)
+#endif /* ESP_AZURE_IOT_THREAD_PRIORITY */
 
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-#include "certs.h"
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
+#ifndef SAMPLE_HOST_NAME
+#define SAMPLE_HOST_NAME                        CONFIG_IOTHUB_HOST_NAME
+#endif /* SAMPLE_HOST_NAME */
 
-/* Paste in the your iothub device connection string  */
-static const char* connectionString = CONFIG_IOTHUB_CONNECTION_STRING;
+#ifndef SAMPLE_DEVICE_ID
+#define SAMPLE_DEVICE_ID                        CONFIG_IOTHUB_DEVICE_ID
+#endif /* SAMPLE_DEVICE_ID */
 
-#define DOWORK_LOOP_NUM     3
+/* Optional DEVICE KEY.  */
+#ifndef SAMPLE_DEVICE_KEY
+#define SAMPLE_DEVICE_KEY                       CONFIG_IOTHUB_DEVICE_KEY
+#endif /* SAMPLE_DEVICE_KEY */
 
-typedef struct MAKER_TAG
+/* Optional module ID.  */
+#ifndef SAMPLE_MODULE_ID
+#define SAMPLE_MODULE_ID                        CONFIG_IOTHUB_MODULE_ID
+#endif /* SAMPLE_MODULE_ID */
+
+#ifndef SAMPLE_IOTHUB_WAIT_OPTION
+#define SAMPLE_IOTHUB_WAIT_OPTION               CONFIG_IOTHUB_WAIT_OPTION
+#endif /* SAMPLE_IOTHUB_WAIT_OPTION */
+
+/* Define sample properties.  */
+static char fixed_reported_properties[] = "{\"sample_report\": \"OK\"}";
+static char method_response_payload[] = "{\"status\": \"OK\"}";
+
+static uint32_t unix_time_get(size_t *unix_time)
 {
-    char* makerName;
-    char* style;
-    int year;
-} Maker;
 
-typedef struct GEO_TAG
-{
-    double longitude;
-    double latitude;
-} Geo;
+    /* Using time() to get unix time.
+       Note: User needs to implement own time function to get the real time on device, such as: SNTP.  */
+    *unix_time = (size_t)time(NULL);
 
-typedef struct CAR_STATE_TAG
-{
-    int32_t softwareVersion;        // reported property
-    uint8_t reported_maxSpeed;      // reported property
-    char* vanityPlate;              // reported property
-} CarState;
-
-typedef struct CAR_SETTINGS_TAG
-{
-    uint8_t desired_maxSpeed;       // desired property
-    Geo location;                   // desired property
-} CarSettings;
-
-typedef struct CAR_TAG
-{
-    char* lastOilChangeDate;        // reported property
-    char* changeOilReminder;        // desired property
-    Maker maker;                    // reported property
-    CarState state;                 // reported property
-    CarSettings settings;           // desired property
-} Car;
-
-//  Converts the Car object into a JSON blob with reported properties that is ready to be sent across the wire as a twin.
-static char* serializeToJson(Car* car)
-{
-    char* result;
-
-    JSON_Value* root_value = json_value_init_object();
-    JSON_Object* root_object = json_value_get_object(root_value);
-
-    // Only reported properties:
-    (void)json_object_set_string(root_object, "lastOilChangeDate", car->lastOilChangeDate);
-    (void)json_object_dotset_string(root_object, "maker.makerName", car->maker.makerName);
-    (void)json_object_dotset_string(root_object, "maker.style", car->maker.style);
-    (void)json_object_dotset_number(root_object, "maker.year", car->maker.year);
-    (void)json_object_dotset_number(root_object, "state.reported_maxSpeed", car->state.reported_maxSpeed);
-    (void)json_object_dotset_number(root_object, "state.softwareVersion", car->state.softwareVersion);
-    (void)json_object_dotset_string(root_object, "state.vanityPlate", car->state.vanityPlate);
-
-    result = json_serialize_to_string(root_value);
-    json_value_free(root_value);
-
-    return result;
+    return(ESP_OK);
 }
 
-//  Converts the desired properties of the Device Twin JSON blob received from IoT Hub into a Car object.
-static Car* parseFromJson(const char* json, DEVICE_TWIN_UPDATE_STATE update_state)
+static void printf_packet(ESP_PACKET *packet_ptr)
 {
-    Car* car = malloc(sizeof(Car));
-    JSON_Value* root_value = NULL;
-    JSON_Object* root_object = NULL;
-
-    if (NULL == car)
+    while (packet_ptr != NULL)
     {
-        (void)printf("ERROR: Failed to allocate memory\r\n");
-    }
-
-    else
-    {
-        (void)memset(car, 0, sizeof(Car));
-
-        root_value = json_parse_string(json);
-        root_object = json_value_get_object(root_value);
-
-        // Only desired properties:
-        JSON_Value* changeOilReminder;
-        JSON_Value* desired_maxSpeed;
-        JSON_Value* latitude;
-        JSON_Value* longitude;
-
-        if (update_state == DEVICE_TWIN_UPDATE_COMPLETE)
-        {
-            changeOilReminder = json_object_dotget_value(root_object, "desired.changeOilReminder");
-            desired_maxSpeed = json_object_dotget_value(root_object, "desired.settings.desired_maxSpeed");
-            latitude = json_object_dotget_value(root_object, "desired.settings.location.latitude");
-            longitude = json_object_dotget_value(root_object, "desired.settings.location.longitude");
-        }
-        else
-        {
-            changeOilReminder = json_object_dotget_value(root_object, "changeOilReminder");
-            desired_maxSpeed = json_object_dotget_value(root_object, "settings.desired_maxSpeed");
-            latitude = json_object_dotget_value(root_object, "settings.location.latitude");
-            longitude = json_object_dotget_value(root_object, "settings.location.longitude");
-        }
-
-        if (changeOilReminder != NULL)
-        {
-            const char* data = json_value_get_string(changeOilReminder);
-
-            if (data != NULL)
-            {
-                car->changeOilReminder = malloc(strlen(data) + 1);
-                if (NULL != car->changeOilReminder)
-                {
-                    (void)strcpy(car->changeOilReminder, data);
-                }
-            }
-        }
-
-        if (desired_maxSpeed != NULL)
-        {
-            car->settings.desired_maxSpeed = (uint8_t)json_value_get_number(desired_maxSpeed);
-        }
-
-        if (latitude != NULL)
-        {
-            car->settings.location.latitude = json_value_get_number(latitude);
-        }
-
-        if (longitude != NULL)
-        {
-            car->settings.location.longitude = json_value_get_number(longitude);
-        }
-        json_value_free(root_value);
-    }
-
-    return car;
-}
-
-static int deviceMethodCallback(const char* method_name, const unsigned char* payload, size_t size, unsigned char** response, size_t* response_size, void* userContextCallback)
-{
-    (void)userContextCallback;
-    (void)payload;
-    (void)size;
-
-    printf("Method Name: %s\n", method_name);
-    int result;
-    if (strcmp("getCarVIN", method_name) == 0)
-    {
-        const char deviceMethodResponse[] = "{ \"Response\": \"1HGCM82633A004352\" }";
-        *response_size = sizeof(deviceMethodResponse)-1;
-        *response = malloc(*response_size);
-        if (*response != NULL)
-        {
-            (void)memcpy(*response, deviceMethodResponse, *response_size);
-            result = 200;
-        }
-        else
-        {
-            result = -1;
-        }
-    }
-    else
-    {
-        // All other entries are ignored.
-        const char deviceMethodResponse[] = "{ }";
-        *response_size = sizeof(deviceMethodResponse)-1;
-        *response = malloc(*response_size);
-        if (*response != NULL) {
-            (void)memcpy(*response, deviceMethodResponse, *response_size);
-        }
-        result = -1;
-    }
-
-    return result;
-}
-
-static void deviceTwinCallback(DEVICE_TWIN_UPDATE_STATE update_state, const unsigned char* payLoad, size_t size, void* userContextCallback)
-{
-    (void)update_state;
-    (void)size;
-    Car* oldCar = (Car*)userContextCallback;
-    Car* newCar = parseFromJson((const char*)payLoad, update_state);
-
-    if (newCar != NULL)
-    {
-        if (newCar->changeOilReminder != NULL)
-        {
-            if ((oldCar->changeOilReminder != NULL) && (strcmp(oldCar->changeOilReminder, newCar->changeOilReminder) != 0))
-            {
-                free(oldCar->changeOilReminder);
-            }
-
-            if (oldCar->changeOilReminder == NULL)
-            {
-                printf("Received a new changeOilReminder = %s\n", newCar->changeOilReminder);
-                if ( NULL != (oldCar->changeOilReminder = malloc(strlen(newCar->changeOilReminder) + 1)))
-                {
-                    (void)strcpy(oldCar->changeOilReminder, newCar->changeOilReminder);
-                    free(newCar->changeOilReminder);
-                }
-            }
-        }
-
-        if (newCar->settings.desired_maxSpeed != 0)
-        {
-            if (newCar->settings.desired_maxSpeed != oldCar->settings.desired_maxSpeed)
-            {
-                printf("Received a new desired_maxSpeed = %" PRIu8 "\n", newCar->settings.desired_maxSpeed);
-                oldCar->settings.desired_maxSpeed = newCar->settings.desired_maxSpeed;
-            }
-        }
-
-        if (newCar->settings.location.latitude != 0)
-        {
-            if (newCar->settings.location.latitude != oldCar->settings.location.latitude)
-            {
-                printf("Received a new latitude = %f\n", newCar->settings.location.latitude);
-                oldCar->settings.location.latitude = newCar->settings.location.latitude;
-            }
-        }
-
-        if (newCar->settings.location.longitude != 0)
-        {
-            if (newCar->settings.location.longitude != oldCar->settings.location.longitude)
-            {
-                printf("Received a new longitude = %f\n", newCar->settings.location.longitude);
-                oldCar->settings.location.longitude = newCar->settings.location.longitude;
-            }
-        }
-
-        free(newCar);
-    }
-    else
-    {
-        printf("Error: JSON parsing failed!\r\n");
+        printf("%.*s", (int16_t)(packet_ptr -> esp_packet_append_ptr - packet_ptr -> esp_packet_prepend_ptr),
+               (char *)packet_ptr -> esp_packet_prepend_ptr);
+        packet_ptr = packet_ptr -> esp_packet_next;
     }
 }
 
-static void reportedStateCallback(int status_code, void* userContextCallback)
+static void connection_status_callback(ESP_AZURE_IOT_HUB_CLIENT *hub_client_ptr, uint32_t status)
 {
-    (void)userContextCallback;
-    printf("Device Twin reported properties update completed with result: %d\r\n", status_code);
+    ESP_PARAMETER_NOT_USED(hub_client_ptr);
+    switch (status) {
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_CONNECTED:
+            printf("Connected to IoTHub.\r\n");
+            break;
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_NOT_CONNECTED:
+            printf("Disconnected from IoTHub!: error code = 0x%08x\r\n", status);
+            break;
+        default:
+            break;
+    }
 }
 
-
-static void iothub_client_device_twin_and_methods_sample_run(void)
+static void iothub_client_sample_device_twin_and_methods(ESP_AZURE_IOT_HUB_CLIENT *iothub_client)
 {
-    IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol;
-    IOTHUB_DEVICE_CLIENT_LL_HANDLE iotHubClientHandle;
+    ESP_PACKET *packet_ptr;
+    uint32_t status = 0;
+    uint32_t response_status;
+    uint32_t request_id;
+    uint16_t method_name_length;
+    uint8_t *method_name_ptr;
+    uint16_t context_length;
+    void *context_ptr;
 
-    // Select the Protocol to use with the connection
-#ifdef SAMPLE_MQTT
-    protocol = MQTT_Protocol;
-#endif // SAMPLE_MQTT
-#ifdef SAMPLE_MQTT_OVER_WEBSOCKETS
-    protocol = MQTT_WebSocket_Protocol;
-#endif // SAMPLE_MQTT_OVER_WEBSOCKETS
-#ifdef SAMPLE_AMQP
-    protocol = AMQP_Protocol;
-#endif // SAMPLE_AMQP
-#ifdef SAMPLE_AMQP_OVER_WEBSOCKETS
-    protocol = AMQP_Protocol_over_WebSocketsTls;
-#endif // SAMPLE_AMQP_OVER_WEBSOCKETS
-#ifdef SAMPLE_HTTP
-    protocol = HTTP_Protocol;
-#endif // SAMPLE_HTTP
-
-    if (IoTHub_Init() != 0)
+    if ((status = esp_azure_iot_hub_client_direct_method_enable(iothub_client)))
     {
+        printf("Direct method receive enable failed!: error code = 0x%08x\r\n", status);
+        return;
+    }
+
+    if ((status = esp_azure_iot_hub_client_device_twin_enable(iothub_client)))
+    {
+        printf("device twin enabled failed!: error code = 0x%08x\r\n", status);
+        return;
+    }
+
+    if ((status = esp_azure_iot_hub_client_device_twin_properties_request(iothub_client, portMAX_DELAY)))
+    {
+        printf("device twin document request failed!: error code = 0x%08x\r\n", status);
+        return;
+    }
+
+    if ((status = esp_azure_iot_hub_client_device_twin_properties_receive(iothub_client, &packet_ptr, portMAX_DELAY)))
+    {
+        printf("device twin document receive failed!: error code = 0x%08x\r\n", status);
+        return;
+    }
+
+    printf("Receive twin properties :");
+    printf_packet(packet_ptr);
+    printf("\r\n");
+    esp_azure_iot_packet_release(packet_ptr);
+    packet_ptr = NULL;
+
+    /* Loop to receive device twin and direct method message.  */
+    while (1)
+    {
+
+        if ((status = esp_azure_iot_hub_client_direct_method_message_receive(iothub_client,
+                                                                            &method_name_ptr, &method_name_length,
+                                                                            &context_ptr, &context_length,
+                                                                            &packet_ptr, SAMPLE_IOTHUB_WAIT_OPTION)))
+        {
+            if (status != ESP_AZURE_IOT_NO_PACKET) {
+                printf("Direct method receive failed!: error code = 0x%08x\r\n", status);
+                break;
+            }
+        } else {
+
+            printf("Receive method call: %.*s, with payload:", (int16_t)method_name_length, (char *)method_name_ptr);
+            printf_packet(packet_ptr);
+            printf("\r\n");
+
+            if ((status = esp_azure_iot_hub_client_direct_method_message_response(iothub_client, 200 /* method status */,
+                                                                                context_ptr, context_length,
+                                                                                (uint8_t *)method_response_payload, sizeof(method_response_payload) - 1,
+                                                                                portMAX_DELAY)))
+            {
+                printf("Direct method response failed!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+            esp_azure_iot_packet_release(packet_ptr);
+            packet_ptr = NULL;
+        }
+
+        if ((status = esp_azure_iot_hub_client_device_twin_desired_properties_receive(iothub_client, &packet_ptr,
+                                                                                     SAMPLE_IOTHUB_WAIT_OPTION)))
+        {
+            if (status != ESP_AZURE_IOT_NO_PACKET) {
+                printf("Receive desired property receive failed!: error code = 0x%08x\r\n", status);
+                break;
+            }
+        } else {
+
+            printf("Receive desired property call: ");
+            printf_packet(packet_ptr);
+            printf("\r\n");
+            esp_azure_iot_packet_release(packet_ptr);
+            packet_ptr = NULL;
+
+            if ((status = esp_azure_iot_hub_client_device_twin_reported_properties_send(iothub_client,
+                                                                                    (uint8_t *)fixed_reported_properties, sizeof(fixed_reported_properties) - 1,
+                                                                                    &request_id, &response_status,
+                                                                                    portMAX_DELAY)))
+            {
+                printf("Device twin reported properties failed!: error code = 0x%08x\r\n", status);
+            }
+
+            if ((response_status < 200) || (response_status >= 300))
+            {
+                printf("device twin report properties failed with code : %d\r\n", response_status);
+                break;
+            }
+        }
+    }
+
+    esp_azure_iot_packet_release(packet_ptr);
+    packet_ptr = NULL;
+}
+
+static void iothub_client_device_twin_and_methods_sample_run(void) 
+{
+    uint32_t                    status = 0;
+    ESP_AZURE_IOT               *esp_azure_iot;
+    ESP_AZURE_IOT_HUB_CLIENT    *iothub_client;
+    uint8_t *iothub_hostname = (uint8_t *)SAMPLE_HOST_NAME;
+    uint8_t *iothub_device_id = (uint8_t *)SAMPLE_DEVICE_ID;
+    uint32_t iothub_hostname_length = sizeof(SAMPLE_HOST_NAME) - 1;
+    uint32_t iothub_device_id_length = sizeof(SAMPLE_DEVICE_ID) - 1;
+
+    /* Init Azure IoT Time Handle */
+    if (esp_azure_iot_time_init()) {
         (void)printf("Failed to initialize the platform.\r\n");
-    }
-    else
-    {
-        if ((iotHubClientHandle = IoTHubDeviceClient_LL_CreateFromConnectionString(connectionString, protocol)) == NULL)
-        {
-            (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
+        return;
+    } 
+    
+    while (1) {
+        esp_azure_iot = calloc(1, sizeof(ESP_AZURE_IOT));
+        iothub_client = calloc(1, sizeof(ESP_AZURE_IOT_HUB_CLIENT));
+        if (!esp_azure_iot || !iothub_client) {
+            printf("Failed to initialize the azure.\r\n");
+            break;
         }
-        else
-        {
-            // Uncomment the following lines to enable verbose logging (e.g., for debugging).
-            //bool traceOn = true;
-            //(void)IoTHubDeviceClient_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
-
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-            // For mbed add the certificate information
-            if (IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, "TrustedCerts", certificates) != IOTHUB_CLIENT_OK)
+        
+        do {
+            /* Create Azure IoT handler.  */
+            if ((status = esp_azure_iot_create(esp_azure_iot, (uint8_t *)"Azure IoT", ESP_AZURE_IOT_STACK_SIZE,
+                                            ESP_AZURE_IOT_THREAD_PRIORITY, unix_time_get)))
             {
-                (void)printf("failure to set option \"TrustedCerts\"\r\n");
+                printf("Failed on esp_azure_iot_create!: error code = 0x%08x\r\n", status);
+                break;
             }
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
-
-            Car car;
-            memset(&car, 0, sizeof(Car));
-            car.lastOilChangeDate = "2016";
-            car.maker.makerName = "Fabrikam";
-            car.maker.style = "sedan";
-            car.maker.year = 2014;
-            car.state.reported_maxSpeed = 100;
-            car.state.softwareVersion = 1;
-            car.state.vanityPlate = "1I1";
-
-            char* reportedProperties = serializeToJson(&car);
-            if (reportedProperties != NULL)
+            
+            /* Initialize IoTHub client. */
+            if ((status = esp_azure_iot_hub_client_initialize(iothub_client, esp_azure_iot,
+                                                            iothub_hostname, iothub_hostname_length,
+                                                            iothub_device_id, iothub_device_id_length,
+                                                            (uint8_t *)SAMPLE_MODULE_ID, sizeof(SAMPLE_MODULE_ID) - 1,
+                                                            NULL)))
             {
-                (void)IoTHubDeviceClient_LL_SendReportedState(iotHubClientHandle, (const unsigned char*)reportedProperties, strlen(reportedProperties), reportedStateCallback, NULL);
-                (void)IoTHubDeviceClient_LL_SetDeviceMethodCallback(iotHubClientHandle, deviceMethodCallback, NULL);
-                (void)IoTHubDeviceClient_LL_SetDeviceTwinCallback(iotHubClientHandle, deviceTwinCallback, &car);
-
-                while (1) {
-                    IoTHubDeviceClient_LL_DoWork(iotHubClientHandle);
-                    ThreadAPI_Sleep(10);
-                }
-
-                free(reportedProperties);
-                free(car.changeOilReminder);
+                printf("Failed on esp_azure_iot_hub_client_initialize!: error code = 0x%08x\r\n", status);
+                break;
             }
-            else
+
+#if CONFIG_IOTHUB_USING_CERTIFICATE
+
+            /* Initialize the device certificate.  */
+            if ((status = esp_secure_x509_certificate_initialize(&device_certificate, device_cert, sizeof(device_cert),
+                                                                    NULL, 0, device_private_key, sizeof(device_private_key),
+                                                                    DEVICE_KEY_TYPE)))
             {
-                printf("Error: JSON serialization failed!\r\n");
+                printf("Failed on esp_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+                break;
             }
-            IoTHubDeviceClient_LL_Destroy(iotHubClientHandle);
+
+            /* Set device certificate.  */
+            if ((status = esp_azure_iot_hub_client_device_cert_set(iothub_client, &device_certificate)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_device_cert_set!: error code = 0x%08x\r\n", status);
+                break;
+            }
+#else
+
+            /* Set symmetric key.  */
+            if ((status = esp_azure_iot_hub_client_symmetric_key_set(iothub_client, (uint8_t *)SAMPLE_DEVICE_KEY, sizeof(SAMPLE_DEVICE_KEY) - 1)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_symmetric_key_set!\r\n");
+                break;
+            }
+#endif /* USE_DEVICE_CERTIFICATE */
+
+            /* Set connection status callback. */
+            if (esp_azure_iot_hub_client_connection_status_callback_set(iothub_client, connection_status_callback))
+            {
+                printf("Failed on connection_status_callback!\r\n");
+            }
+
+            /* Connect to IoTHub client. */
+            if (esp_azure_iot_hub_client_connect(iothub_client, true, portMAX_DELAY))
+            {
+                printf("Failed on esp_azure_iot_hub_client_connect!\r\n");
+            }
+
+            /* Run Device Twin and sample. */
+            iothub_client_sample_device_twin_and_methods(iothub_client);
+
+        } while (0);
+
+        /* Destroy IoTHub Client.  */
+        esp_azure_iot_hub_client_disconnect(iothub_client);
+        esp_azure_iot_hub_client_deinitialize(iothub_client);
+        esp_azure_iot_delete(esp_azure_iot);
+
+        /* Destory azure iot.  */
+        if (iothub_client) {
+            free(iothub_client);
+            iothub_client = NULL;
         }
 
-        IoTHub_Deinit();
+        if (esp_azure_iot) {
+            free(esp_azure_iot);
+            esp_azure_iot = NULL;
+        }
     }
+    
 }
 
 int iothub_client_device_twin_init(void)

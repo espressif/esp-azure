@@ -19,7 +19,7 @@ Sample output:
 > While changing the value, please ensure that you have completely cleared the older value, before pasting the new one. If you face any run time connection issues, double check this value.
 
 
-- Execute `make menuconfig`. In the menu, go to `Example Configuration` and configure `WiFi SSID` and `WiFi Password` so that the device can connect to the appropriate Wi-Fi network on boot up. Set `IOT Hub Device Connection String` with the string copied above
+- Execute `make menuconfig`. In the menu, go to `Example Configuration` and configure `WiFi SSID` and `WiFi Password` so that the device can connect to the appropriate Wi-Fi network on boot up. Set `IOT Hub Device Host Name` and `IOT Hub Device ID` with the string copied above. You also need set `IOT Hub Device Key` when choose `Symmetric Key` authenticate which be default.
 
 ## Trying out the example
 
@@ -28,6 +28,7 @@ Sample output:
 ``` bash
 $ make -j8 flash monitor
 ```
+> Note that the `CONFIG_FREERTOS_UNICORE` is enabled when work on ESP32.
 
 - In a separate window, monitor the Azure IoT events using the following:
 
@@ -35,29 +36,48 @@ $ make -j8 flash monitor
 $ az iot hub monitor-events -n [IoTHub Name] --login '[Connection string - primary key]'
 ```
 
-- Once the device connects to the Wi-Fi network, it starts publishing MQTT messages. The Azure IoT monitor will show these messages like below:
-
-```
-{
-    "event": {
-        "origin": "<azure-iot-device-id>",
-        "payload": "{\"deviceId\":\"myFirstDevice\",\"windSpeed\":13.00,\"temperature\":22.00,\"humidity\":67.00}"
-    }
-}
-```
-
+- Once the device connects to the Wi-Fi network, it starts publishing MQTT messages which include device's properties or not. You can execute `make menuconfig`, go to `Example Configuration` and configure `IOT Hub Device Property`. The Azure IoT monitor will show these messages like below:
+	- DISABLE\_IOTHUB_PROPERTY
+		```
+		{
+		    "event": {
+		        "origin": "<azure-iot-device-id>",
+		        "payload": "{\"Message ID\":60}"
+		    }
+		}
+		```
+	- ENABLE\_IOTHUB_PROPERTY
+		```
+		{
+		    "event": {
+		        "origin": "<azure-iot-device-id>",
+		        "payload": "propertyA=valueApropertyB=valueB{\"Message ID\":368}"
+		    }
+		}
+		```
 - You can also send MQTT messages to your device by using the following command:
 
-```
-$ az iot device c2d-message send -d [Device Id] -n [IoTHub Name] --data [Data_to_Send]
-```
-The `make monitor` output will print the received messages like below:
+	```
+    $ az iot device c2d-message send -d [Device Id] -n [IoTHub Name] --data [Data_to_Send]
+	```
 
-```
-Received Message [1]
- Message ID: 635fd5a9-70a4-422f-9394-4cda9026c2e1
- Correlation ID: <null>
- Data: <<<Hello World>>> & Size=18
-```
+    The `make monitor` output will print the received messages like below
 
+	- DISABLE\_IOTHUB_PROPERTY
 
+		```
+		Receive message:{"Message ID":3719}
+		```
+	
+    - ENABLE\_IOTHUB_PROPERTY
+
+		```
+    	Receive property: propertyA = valueA
+    	Receive property: propertyB = valueB
+    	Receive message:{"Message ID":3719}
+		```
+		```
+    	Property [propertyA] not found: 0x00020006
+    	Property [propertyB] not found: 0x00020006
+    	Receive message:{"Message ID":3719}
+		```

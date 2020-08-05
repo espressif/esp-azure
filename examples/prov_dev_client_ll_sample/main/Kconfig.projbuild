@@ -14,25 +14,63 @@ config WIFI_PASSWORD
 
 		Can be left blank if the network has no security set.
 
-config IOTHUB_CONNECTION_STRING
-    string "IOT Hub Connection String"
-	default ""
-	help
-		The IoT Hub Connection string - primary key in the format
-		"HostName=<hostname>;SharedAccessKeyName=<shared_access_key_name>;SharedAccessKey=<shared_access_key>."
-		You can get this from the Azure IoT CLI or the Azure Portal.
+choice IOTHUB_AUTH_CHOOSE
+        prompt "Choose Azure IoT Hub for authenticate (See help for more Info)"
+        default IOTHUB_USING_DEVICE_KEY
+        help
+            The Azure IoT Hub support multiple authenticate. Currently Certificate and Symmetric Key are
+            supported.
+        config IOTHUB_USING_CERTIFICATE
+            bool "Certificate"
+        config IOTHUB_USING_DEVICE_KEY
+            bool "Device Key"
+endchoice
 
-config DEVICE_COMMON_NAME
+config IOTHUB_DEVICE_KEY
+    string "IOT Hub Device Key"
+    depends on IOTHUB_USING_DEVICE_KEY
+    default ""
+	help
+        Device key can be picked from device connection string which is of format: 
+        HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+        You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_MODULE_ID
+    string "IOT Hub Device Module ID"
+    default ""
+    help
+        Module ID, You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_ENDPOINT
+    string "IOT Hub Device End Point"
+    default ""
+    help
+        ENDPOINT, You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_REGISTRATION_ID
     string "Device Leaf Certificate Common Name"
-    default "mydevice"
+    default ""
     help
         Common name of Leaf Certificate
 
-config DPS_ID_SCOPE
-    string "ID Scope of Device provisioning service"
-    default "myidscope"
+config IOTHUB_ID_SCOPE
+    string "ID Scope of Device provisioning Service"
+    default ""
     help
         This is the unique ID scope of Device Provisioning Service (DPS), and can be found under "Overview"
         section of your DPS on azure IoT portal
+
+config IOTHUB_PROPERTY
+        bool "IOT Hub Device Property"
+        default n
+        help
+            Enable or Disable the device's properties when send to cloud.
+
+config IOTHUB_WAIT_OPTION
+    int "Time wait in Milliseconds between two consecutive messages"
+    range   100 65536
+    default 100
+    help
+        Set time delay between two consecutive message sent to the cloud.        
 
 endmenu
