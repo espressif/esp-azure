@@ -58,7 +58,7 @@ This example demonstrates Device Authentication using X.509 CA Certificates. Ref
 - In the terminal, navigate to directory where `rootCA.pem` was created and run following command to generate a certificate signing request:
 
 ```
-	$ openssl req -new -key rootCA.pem -out verification.csr
+	$ openssl req -new -key rootCA.key -out verification.csr
 ```
 > You can keep all parameters at defaults (by pressing enter) except Common Name (CN). **Give the Verification Code copied in previous step as Common Name.**
 

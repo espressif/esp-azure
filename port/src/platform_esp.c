@@ -46,7 +46,7 @@ void platform_deinit(void)
       sntp_stop();
 }
 
-STRING_HANDLE platform_get_platform_info(void)
+STRING_HANDLE platform_get_platform_info(PLATFORM_INFO_OPTION options)
 {
     // Expected format: "(<runtime name>; <operating system name>; <platform>)"
 

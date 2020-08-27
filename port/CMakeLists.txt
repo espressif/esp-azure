@@ -8,6 +8,8 @@ set (COMPONENT_ADD_INCLUDEDIRS
     "inc"
     "${AZURE_IOT_SDK}/certs"
 	"${AZURE_IOT_SDK}/c-utility/inc"
+	"${AZURE_IOT_SDK}/c-utility/deps/azure-macro-utils-c/inc"
+	"${AZURE_IOT_SDK}/c-utility/deps/umock-c/inc"
 	"${AZURE_IOT_SDK}/c-utility/pal/inc"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos"
 	"${AZURE_IOT_SDK}/c-utility/pal/generic"
@@ -27,7 +29,6 @@ set (COMPONENT_SRCS
 	"src/tlsio_esp_tls.c"
 	"${AZURE_IOT_SDK}/certs/certs.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/lock.c"
-	"${AZURE_IOT_SDK}/c-utility/pal/dns_async.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/socket_async.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/threadapi.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/tickcounter.c"
@@ -60,7 +61,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/c-utility/src/usha.c"
 	"${AZURE_IOT_SDK}/c-utility/src/vector.c"
 	"${AZURE_IOT_SDK}/c-utility/src/xio.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base64.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base64.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_device_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_core_ll.c"
@@ -108,7 +109,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/tpm_socket_comm.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub.c"
 	"${AZURE_IOT_SDK}/c-utility/src/http_proxy_io.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base32.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base32.c"
 	)
 
 if (CONFIG_DEVICE_COMMON_NAME OR CONFIG_SYMM_KEY)
@@ -120,6 +121,11 @@ set (COMPONENT_SUBMODULES "${AZURE_IOT_SDK}")
 set(COMPONENT_PRIV_REQUIRES "mbedtls esp-tls main")
 
 register_component()
+
+set_source_files_properties(
+    ${AZURE_IOT_SDK}/iothub_client/src/iothubtransport_mqtt_common.c
+    PROPERTIES COMPILE_FLAGS
+    -Wno-maybe-uninitialized)
 
 component_compile_options (
 	-Wno-unused-function
