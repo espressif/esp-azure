@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "tlsio_pal.h"
+#include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/agenttime.h"

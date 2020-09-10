@@ -6,13 +6,9 @@
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 
 COMPONENT_ADD_INCLUDEDIRS := \
-port \
-port/inc \
 azure-iot-sdk-c/c-utility/inc \
-azure-iot-sdk-c/c-utility/inc/azure_c_shared_utility \
-azure-iot-sdk-c/c-utility/pal/inc \
-azure-iot-sdk-c/c-utility/pal/freertos \
-azure-iot-sdk-c/c-utility/pal/generic \
+azure-iot-sdk-c/c-utility/deps/azure-macro-utils-c/inc \
+azure-iot-sdk-c/c-utility/deps/umock-c/inc \
 azure-iot-sdk-c/iothub_client/inc \
 azure-iot-sdk-c/serializer/inc \
 azure-iot-sdk-c/umqtt/inc \
@@ -21,14 +17,19 @@ azure-iot-sdk-c/deps/parson \
 azure-iot-sdk-c/provisioning_client/inc \
 azure-iot-sdk-c/provisioning_client/adapters \
 azure-iot-sdk-c/provisioning_client/deps/utpm/inc \
- 
+
+COMPONENT_PRIV_INCLUDEDIRS := \
+port/inc \
+azure-iot-sdk-c/c-utility/pal/inc \
+azure-iot-sdk-c/c-utility/pal/freertos \
+azure-iot-sdk-c/c-utility/pal/generic \
+
 ifndef CONFIG_TARGET_PLATFORM_ESP8266
 COMPONENT_ADD_INCLUDEDIRS += azure-iot-sdk-c/certs
 endif
  
 COMPONENT_OBJS = \
 azure-iot-sdk-c/c-utility/pal/freertos/lock.o \
-azure-iot-sdk-c/c-utility/pal/dns_async.o \
 azure-iot-sdk-c/c-utility/pal/socket_async.o \
 azure-iot-sdk-c/c-utility/pal/freertos/threadapi.o \
 azure-iot-sdk-c/c-utility/pal/freertos/tickcounter.o \
@@ -125,7 +126,7 @@ azure-iot-sdk-c/provisioning_client/deps/utpm/src/Memory.o \
 azure-iot-sdk-c/provisioning_client/deps/utpm/src/tpm_socket_comm.o \
 azure-iot-sdk-c/iothub_client/src/iothub.o \
 azure-iot-sdk-c/c-utility/src/http_proxy_io.o \
-azure-iot-sdk-c/c-utility/src/base32.o \
+azure-iot-sdk-c/c-utility/src/azure_base32.o \
 
 ifdef CONFIG_DEVICE_COMMON_NAME
 COMPONENT_OBJS += azure-iot-sdk-c/provisioning_client/src/iothub_auth_client.o
@@ -167,3 +168,5 @@ CFLAGS += -Wno-error=maybe-uninitialized -Wno-error=char-subscripts
 ifdef CONFIG_DEVICE_COMMON_NAME
 CFLAGS += -DUSE_PROV_MODULE
 endif
+
+azure-iot-sdk-c/iothub_client/src/iothubtransport_mqtt_common.o: CFLAGS+=-Wno-maybe-uninitialized
