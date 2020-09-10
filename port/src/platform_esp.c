@@ -16,8 +16,15 @@
 
 static const char* TAG = "esp-azure";
 
+// If SNTP is handled here, platform_init() will block until a valid internet connection is available, time can be set.
+// To handle sntp initialization in your own code (in an async/non-blocking manner), comment out line below.
+// a better way would be to do setting in project config (menuconfig), tbd...
+
+// #define AZURE_PLATFORM_DOES_SNTP 1
+
 int platform_init(void)
 {
+#ifdef AZURE_PLATFORM_DOES_SNTP
     initialize_sntp();
     ESP_LOGI(TAG, "ESP platform integration initialized!");
     time_t now = sntp_get_current_timestamp();
@@ -28,7 +35,7 @@ int platform_init(void)
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
     ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
-
+#endif
     return 0;
 }
 
@@ -41,7 +48,9 @@ const IO_INTERFACE_DESCRIPTION* platform_get_default_tlsio(void)
 void platform_deinit(void)
 {
 	ESP_LOGI(TAG, "Shutting down ESP platform integration...");
+#ifdef AZURE_PLATFORM_DOES_SNTP
     finalize_sntp();
+#endif
 }
 
 STRING_HANDLE platform_get_platform_info(PLATFORM_INFO_OPTION options)
