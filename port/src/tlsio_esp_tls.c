@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "esp_log.h"
 #include "tlsio_pal.h"
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/gballoc.h"
@@ -19,6 +20,7 @@
 #include "azure_c_shared_utility/singlylinkedlist.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/tlsio_options.h"
+#include "azure_c_shared_utility/shared_util_options.h"
 
 #include "esp_tls.h"
 
@@ -68,6 +70,7 @@ typedef struct TLS_IO_INSTANCE_TAG
     char* hostname;
     SINGLYLINKEDLIST_HANDLE pending_transmission_list;
     TLSIO_OPTIONS options;
+    bool set_renegotiation;
 } TLS_IO_INSTANCE;
 
 /* Codes_SRS_TLSIO_30_005: [ The phrase "enter TLSIO_STATE_EXT_ERROR" means the adapter shall call the on_io_error function and pass the on_io_error_context that was supplied in tlsio_open_async. ]*/
@@ -482,6 +485,10 @@ static void tlsio_esp_tls_dowork(CONCRETE_IO_HANDLE tls_io)
             {
             int result = esp_tls_conn_new_async(tls_io_instance->hostname, strlen(tls_io_instance->hostname), tls_io_instance->port, &tls_io_instance->esp_tls_cfg, tls_io_instance->esp_tls_handle);
             if (result == 1) {
+                if (tls_io_instance->set_renegotiation) {
+                    //ESP_LOGI("esp-azure", "TLSIO_STATE_INIT: Set renegotiation");
+                    mbedtls_ssl_conf_renegotiation(&tls_io_instance->esp_tls_handle->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
+                }
                 tls_io_instance->tlsio_state = TLSIO_STATE_OPEN;
                 tls_io_instance->on_open_complete(tls_io_instance->on_open_complete_context, IO_OPEN_OK);
             } else if (result == -1) {
@@ -618,17 +625,44 @@ static int tlsio_esp_tls_setoption(CONCRETE_IO_HANDLE tls_io, const char* option
     else
     {
         /* Codes_SRS_TLSIO_30_121: [ If the optionName parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
-        TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
-        if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+        if (optionName == NULL)
         {
-            LogError("Failed tlsio_options_set");
+            LogError("NULL optionName");
             result = MU_FAILURE;
         }
         else
         {
-            result = 0;
+            /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
+            if (value == NULL)
+            {
+                LogError("NULL value");
+                result = MU_FAILURE;
+            }
+            else
+            {
+                if (strcmp(optionName, OPTION_SET_TLS_RENEGOTIATION) == 0)
+                {
+                    tls_io_instance->set_renegotiation = *((bool*)(value));
+                    //ESP_LOGI("esp-azure", "Set renegotiation to : %u", tls_io_instance->set_renegotiation);
+                    mbedtls_ssl_conf_renegotiation(&tls_io_instance->esp_tls_handle->conf,
+                                                   tls_io_instance->set_renegotiation ? MBEDTLS_SSL_RENEGOTIATION_ENABLED : MBEDTLS_SSL_RENEGOTIATION_DISABLED);
+                    result = 0;
+                }
+                else
+                {
+                    /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
+                    TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
+                    if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+                    {
+                        LogError("Failed tlsio_options_set");
+                        result = MU_FAILURE;
+                    }
+                    else
+                    {
+                        result = 0;
+                    }
+                }
+            }
         }
     }
     return result;
