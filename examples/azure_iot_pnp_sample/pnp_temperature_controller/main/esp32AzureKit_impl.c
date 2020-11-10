@@ -11,8 +11,8 @@
  *******************************************************************************************/
 
 #include "esp32AzureKit_impl.h"
-#include "utilities/digitaltwin_serializer.h"
-#include "utilities/deviceinfo_interface.h"
+#include "utilities/pnp_thermostat_component.h"
+#include "utilities/pnp_deviceinfo_component.h"
 #include "utilities/sensor_interface.h"
 #include "sensor_manager.h"
 
@@ -236,8 +236,9 @@ DIGITALTWIN_COMMAND_RESULT Sensor_Command_Echo(char* displayedValue, char** resp
     LogInfo("Parameter: displayedValue = %s", displayedValue);
     oled_show_message(displayedValue);
     char* responseData = "Execute echo successfully";
-    *response = (char*)calloc(strlen(responseData) + 1, sizeof(char));
-    strncpy(*response, responseData, strlen(responseData));
+    size_t responseSize = strlen(responseData) + 1;
+    *response = (char*)calloc(responseSize, sizeof(char));
+    strncpy(*response, responseData, responseSize);
 
     *statusCode = 200;
     LogInfo("Device executed 'echo' command successfully");

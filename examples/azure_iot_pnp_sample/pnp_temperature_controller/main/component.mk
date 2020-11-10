@@ -23,4 +23,4 @@ $(COMPONENT_PATH)/certs/leaf_private_key.pem $(COMPONENT_PATH)/certs/leaf_certif
 	echo "Dummy certificate data for continuous integration" > $@
 endif
 
-CFLAGS += -DSET_TRUSTED_CERT_IN_SAMPLES -Wno-unused-const-variable
+CFLAGS += -DSET_TRUSTED_CERT_IN_SAMPLES -DUSE_PROV_MODULE_FULL -Wno-unused-const-variable

@@ -8,7 +8,7 @@
 #include "sensor_interface.h"
 
 #define MAX_MASSAGE_SIZE 256
-
+#if 0
 //
 // Callback function declarations and DigitalTwin writable (from service side) properties for this interface
 //
@@ -677,3 +677,4 @@ void SensorInterface_Close(DIGITALTWIN_INTERFACE_CLIENT_HANDLE digitalTwinInterf
     // resources callbacks otherwise may have needed.
 
 }
+#endif

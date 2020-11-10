@@ -1,4 +1,4 @@
-set(COMPONENT_SRCS "azure_main.c"
+set(COMPONENT_SRCS "pnp_temperature_controller.c" "azure_main.c"
 				"iot_pnp_client.c"
 				"pnp_azure_board_sensor.c"
 				"pnp_azure_board_device_info.c"

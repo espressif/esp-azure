@@ -3,8 +3,8 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := azure_iot_pnp_sample
+PROJECT_NAME := pnp_temperature_controller
 
-EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../esp-azure
+EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../../esp-azure-new
 
 include $(IDF_PATH)/make/project.mk
