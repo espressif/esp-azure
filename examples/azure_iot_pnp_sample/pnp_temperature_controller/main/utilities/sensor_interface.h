@@ -12,12 +12,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include "digitaltwin_interface_client.h"
+#include "pnp_protocol.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/threadapi.h"
 
-#include "digitaltwin_client_helper.h"
-#include "digitaltwin_serializer.h"
+#include "pnp_device_client_ll.h"
+// #include "digitaltwin_serializer.h"
 #include "parson.h"
 #include "../esp32AzureKit_impl.h"
 
@@ -90,31 +90,31 @@ static const char SensorInterface_MagnetZTelemetry[] = "MagnetZ";
 #define SensorInterface_StopFanCommand "stopFan"
 
 // Methods
-DIGITALTWIN_INTERFACE_CLIENT_HANDLE SensorInterface_Create();
+// DIGITALTWIN_INTERFACE_CLIENT_HANDLE SensorInterface_Create();
 
-void SensorInterface_Close(DIGITALTWIN_INTERFACE_CLIENT_HANDLE digitalTwinInterfaceClientHandle);
+// void SensorInterface_Close(DIGITALTWIN_INTERFACE_CLIENT_HANDLE digitalTwinInterfaceClientHandle);
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendTemp();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendTemp();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendHumid();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendHumid();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendLight();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendLight();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendPitch();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendPitch();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendRoll();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendRoll();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendPressure();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendPressure();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendAltitude();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendAltitude();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetX();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetX();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetY();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetY();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetZ();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendMagnetZ();
 
-DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendAll();
+// DIGITALTWIN_CLIENT_RESULT SensorInterface_Telemetry_SendAll();
 
 #ifdef __cplusplus
 }

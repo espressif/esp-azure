@@ -8,10 +8,11 @@ set (COMPONENT_ADD_INCLUDEDIRS
     "inc"
     "${AZURE_IOT_SDK}/certs"
 	"${AZURE_IOT_SDK}/c-utility/inc"
-	"${AZURE_IOT_SDK}/c-utility/inc/azure_c_shared_utility"
-	"${AZURE_IOT_SDK}/c-utility/pal/inc"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos"
 	"${AZURE_IOT_SDK}/c-utility/pal/generic"
+    "${AZURE_IOT_SDK}/c-utility/deps/azure-macro-utils-c/inc"
+    "${AZURE_IOT_SDK}/c-utility/deps/azure-macro-utils-c/inc/azure_macro_utils"
+    "${AZURE_IOT_SDK}/c-utility/deps/umock-c/inc"
 	"${AZURE_IOT_SDK}/iothub_client/inc"
 	"${AZURE_IOT_SDK}/serializer/inc"
 	"${AZURE_IOT_SDK}/umqtt/inc"
@@ -26,11 +27,9 @@ set (COMPONENT_SRCS
 	"src/agenttime_esp.c"
 	"src/platform_esp.c"
 	"src/tlsio_esp_tls.c"
+    "src/threadapi.c"
 	"${AZURE_IOT_SDK}/certs/certs.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/lock.c"
-	"${AZURE_IOT_SDK}/c-utility/pal/dns_async.c"
-	"${AZURE_IOT_SDK}/c-utility/pal/socket_async.c"
-	"${AZURE_IOT_SDK}/c-utility/pal/freertos/threadapi.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/freertos/tickcounter.c"
 	"${AZURE_IOT_SDK}/c-utility/pal/tlsio_options.c"
 	"${AZURE_IOT_SDK}/c-utility/src/xlogging.c"
@@ -61,7 +60,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/c-utility/src/usha.c"
 	"${AZURE_IOT_SDK}/c-utility/src/vector.c"
 	"${AZURE_IOT_SDK}/c-utility/src/xio.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base64.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base64.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_device_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_ll.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_client_core_ll.c"
@@ -75,6 +74,8 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/iothub_client/src/iothubtransport_mqtt_common.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub_transport_ll_private.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/version.c"
+    "${AZURE_IOT_SDK}/iothub_client/src/iothub_client_core.c"
+    "${AZURE_IOT_SDK}/iothub_client/src/iothub_device_client.c"
 	"${AZURE_IOT_SDK}/umqtt/src/mqtt_client.c"
 	"${AZURE_IOT_SDK}/umqtt/src/mqtt_codec.c"
 	"${AZURE_IOT_SDK}/umqtt/src/mqtt_message.c"
@@ -99,8 +100,10 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_security_factory.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_device_ll_client.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/iothub_security_factory.c"
+    "${AZURE_IOT_SDK}/provisioning_client/src/iothub_auth_client.c"
 	"${AZURE_IOT_SDK}/provisioning_client/adapters/hsm_client_data.c"
 	"${AZURE_IOT_SDK}/provisioning_client/adapters/hsm_client_tpm.c"
+    "${AZURE_IOT_SDK}/provisioning_client/adapters/hsm_client_key.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_auth_client.c"
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/tpm_codec.c"
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/Marshal.c"
@@ -109,7 +112,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/provisioning_client/deps/utpm/src/tpm_socket_comm.c"
 	"${AZURE_IOT_SDK}/iothub_client/src/iothub.c"
 	"${AZURE_IOT_SDK}/c-utility/src/http_proxy_io.c"
-	"${AZURE_IOT_SDK}/c-utility/src/base32.c"
+	"${AZURE_IOT_SDK}/c-utility/src/azure_base32.c"
 	)
 
 if (CONFIG_DEVICE_COMMON_NAME)
@@ -130,8 +133,9 @@ component_compile_options (
 
 component_compile_definitions (
     USE_LWIP_SOCKET_FOR_AZURE_IOT
-	HSM_TYPE_X509
+	HSM_TYPE_SYMM_KEY
 	HSM_TYPE_SAS_TOKEN
+    USE_PROV_MODULE
 )
 
 if (CONFIG_DEVICE_COMMON_NAME)

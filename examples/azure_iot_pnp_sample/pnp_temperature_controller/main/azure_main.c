@@ -20,7 +20,7 @@
 #include "azure_c_shared_utility/http_proxy_io.h"
 
 #include "nvs_flash.h"
-#include "iot_pnp_client.h"
+#include "pnp_temperature_controller.h"
 #include "sensor_manager.h"
 
 #define EXAMPLE_WIFI_SSID CONFIG_WIFI_SSID
@@ -90,7 +90,7 @@ void azure_task(void *pvParameter)
                         false, true, portMAX_DELAY);
     ESP_LOGI(TAG, "Connected to AP success!");
 
-    pnp_telemetry_task();
+    pnp_temperature_controller();
 
     vTaskDelete(NULL);
 }

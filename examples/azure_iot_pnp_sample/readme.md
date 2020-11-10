@@ -1,76 +1,47 @@
-# Implement Azure IoT PnP on esp32-azure-kit based on Azure IoT C public preview SDK.
-In this tutorial, you will learn how to use the esp32-azure-kit board to send data to Azure IoT Central with Azure IoT plug and play.
+# Samples to demonstrate Azure IoT Plug and Play
 
-## Features implemented
-- Azure IoT plug and play
-- Register device by IoT Hub Device Provisioning Service base on an X.509 digital certificate
-- Telemetry data sent for all onboard sensors
-- Display temperature and humidity on screen
-- Cloud to device messages (supports sending a message to display on the screen, press button to go back humiture screen)
+The samples in this directory demonstrate how to implement an Azure IoT Plug and Play device.  Azure IoT Plug and Play is documented [here](aka.ms/iotpnp).  The samples assume basic familiarity with PnP concepts, though not in depth knowledge of the PnP "convention".  The "convention" is a set of rules for serializing and de-serialing data that uses IoTHub primitives for transport which the samples themselves implement.
 
-## What you need
-- An esp32-azure-board kit
+## Directory structure
 
-    ![device: board](images/device-board.jpg)
+The directory contains the following samples:
 
-- An active Azure subscription. If you do not have one, you can register via one of these two methods:
-  - Activate a [free 30-day trial Microsoft Azure account](https://azure.microsoft.com/free/).
-  - Claim your [Azure credit](https://azure.microsoft.com/pricing/member-offers/msdn-benefits-details/) if you are MSDN or Visual Studio subscriber.
+* [pnp_simple_thermostat](./pnp_simple_thermostat) A simple thermostat that implements the model [dtmi:com:example:Thermostat;1](https://github.com/Azure/opendigitaltwins-dtdl/blob/master/DTDL/v2/samples/Thermostat.json).  This sample is considered simple because it only implements one component, the thermostat itself.  **You should begin with this sample.**
 
-- ESP-IDF (Espressif IoT Development Framework)
-  - Please refer the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/stable/) to set up the ESP32 development environment.
+* [pnp_temperature_controller](./pnp_temperature_controller) A temperature controller that implements the model [dtmi:com:example:TemperatureController;1](https://github.com/Azure/opendigitaltwins-dtdl/blob/master/DTDL/v2/samples/TemperatureController.json).  This is considerably more complex than the [pnp_simple_thermostat](./pnp_simple_thermostat) and demonstrates the use of subcomponents.  **You should move onto this sample only after fully understanding pnp_simple_thermostat.**
 
-## How to start
-### Prepare the development enviroment
-  - Setup the ESP-IDF development environment by following this guide https://docs.espressif.com/projects/esp-idf/en/stable/get-started/
-  - Clone the code to your local computer with the command: git clone --recursive https://github.com/espressif/esp-azure.git
+* [common](./common) This directory contains functions for serializing and de-serializing data for PnP and for creating the `IOTHUB_DEVICE_CLIENT_HANDLE` that acts as the transport.  `pnp_temperature_controller` makes extensive use of these functions and demonstrates their use.  **The files in [common](./common) are written generically such that your PnP device application should be able to use them with little or no modification, speeding up your development.**
 
-### Create Azure IoT Central application
-  1. Use your Azure account log into [Azure IoT Central](https://apps.azureiotcentral.com).
-  2. Create a **free preview applicaton**.
+## Configuring the samples
 
-      ![IoT Central, crate a free preview application](images/create-azure-application.png)
-  3. Select **Device templates** and then click **+ New** to create device template.
+Both samples use environment variables to retrieve configuration.  
 
-      ![IoT Central, new device template](images/new-device-template.png)
-  4. Choose the pre-certified device (ESP32-Azure Kit) to create Device template.
+* If you are using a connection string to authenticate:
+  * set IOTHUB_DEVICE_SECURITY_TYPE="connectionString"
+  * set IOTHUB_DEVICE_CONNECTION_STRING="\<connection string of your device\>"
 
-      ![IoT Central, choose pre-certified device template](images/pre-certified-device-template.png)
-  5. Go to the **Devices** page select **Azure Kit** and click **+ New** to create a new device.
+* If you are using a DPS enrollment group to authenticate:
+  * set IOTHUB_DEVICE_SECURITY_TYPE="DPS"
+  * set IOTHUB_DEVICE_DPS_ID_SCOPE="\<ID Scope of DPS instance\>"
+  * set IOTHUB_DEVICE_DPS_DEVICE_ID="\<Device's ID\>"
+  * set IOTHUB_DEVICE_DPS_DEVICE_KEY="\<Device's security key \>"
+  * *OPTIONAL*, if you do not wish to use the default endpoint "global.azure-devices-provisioning.net"
+    * set IOTHUB_DEVICE_DPS_ENDPOINT="\<DPS endpoint\>"
 
-      ![IoT Central, create new device)](images/create-new-device.png)
-  6. In the popup device info page, set **Device ID**, **Device Name** and then click **Create** button to create a new device.
+* If you are running on a device that does not have environment variables, hardcode the values in the .c file itself.
 
-     ![IoT Central, set device info](images/set-device-info.png)
-  7. In the **Devices** page, click the device you created in step 6 to enter device detail info page.
+## Enabling Device Provisioning Service client (DPS)
 
-      ![IoT Central, go to device detail info page](images/click-new-device.png)
-  8. Click **Connect** button to get **Scope ID**, **Device ID**, **Primary Key**, and make a note of them.
+To enable DPS with symmetric keys (which is what this sample uses when DPS is configured), use the cmake flags `-Duse_prov_client=ON -Dhsm_type_symm_key=ON -Drun_e2e_tests=OFF `
 
-      ![IoT Central, device connection info](images/device-connection-info.png)
+If you are building connection string only authentication, these extra cmake flags are not required.
 
-### Build and flash the code
-  1. `cd` to the directory **esp-azure/examples/azure_iot_pnp_sample**.
-  2. Run `make menuconfig`, and update the values under **Example Configuration** section with the infomation you noted in previous step.
-      - **Scope ID:** A unique value used by the IoT Hub Device Provisioning Service. 
-      - **Device ID:** Unique device identifier.
-      - **Primary Key:** Primary device SAS token.
+## Caveats
 
-      ![Build code, make menuconfig](images/menuconfig.png)
+* Azure IoT Plug and Play is only supported for MQTT and MQTT over WebSockets for the Azure IoT C Device SDK.  Modifying these samples to use AMQP, AMQP over WebSockets, or HTTP protocols **will not work**.
 
-  3. Run `make flash` to flash the app to esp32-azure-kit and wait for the device to reboot.
+* When the thermostat receives a desired temperature, it immediately makes that the actual temperature to keep the simulation code easier to follow.  In a real thermostat there would be delay between the desired temperature being set and the room reaching that state.
 
-### View the device in IoT central
-  1. In your IoT Central application, go to the **Devices** page and select the device you created in previous step. The device will be automatically registered when the device boots up.
+* The command `getMaxMinReport` allows the application to specify statistics of the temperature since a given date.  To keep the sample simple, we ignore this field and instead return statistics from the entire lifecycle of the executable.
 
-      ![View device, overview](images/device-overview-page.png)
-    After a couple of minutes, this page will show the telemetry data.
-
-  2. Select the **About** page to see the property values the device sent.
-  3. Select the **Commands** page to call commands on the device.
-
-      ![View device, commands](images/device-command.png)
-
- ## Note:
-  1. For details about Azure IoT PnP project, please refer to: https://github.com/Azure/azure-iot-sdk-c-pnp/tree/public-preview
-  2. If the device can't send telemetry data to IoT central, run the command **make monitor** to check the device logs
+* The temperature controller implements a command named `reboot` which takes a request payload indicating the delay in seconds.  The sample will log the value requested but will not take any further action.
