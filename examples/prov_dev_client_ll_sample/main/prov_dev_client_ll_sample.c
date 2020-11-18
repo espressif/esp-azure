@@ -1,360 +1,332 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-// CAVEAT: This sample is to demonstrate azure IoT client concepts only and is not a guide design principles or style
-// Checking of return codes and error values shall be omitted for brevity.  Please practice sound engineering practices
-// when writing production code.
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-#include "iothub.h"
-#include "iothub_message.h"
-#include "iothub_client_version.h"
-#include "azure_c_shared_utility/threadapi.h"
-#include "azure_c_shared_utility/tickcounter.h"
-#include "azure_c_shared_utility/shared_util_options.h"
-#include "azure_c_shared_utility/http_proxy_io.h"
+#include "esp_azure_iot.h"
+#include "esp_azure_iot_hub_client.h"
+#include "esp_azure_iot_provisioning_client.h"
 
-#include "iothub_device_client_ll.h"
-#include "iothub_client_options.h"
-#include "azure_prov_client/prov_device_ll_client.h"
-#include "azure_prov_client/prov_security_factory.h"
-#include "sdkconfig.h"
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-#include "certs.h"
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
+/* Define the Azure IOT task stack and priority.  */
+#ifndef ESP_AZURE_IOT_STACK_SIZE
+#define ESP_AZURE_IOT_STACK_SIZE                     (3072)
+#endif /* ESP_AZURE_IOT_STACK_SIZE */
 
-//
-// The protocol you wish to use should be uncommented
-//
-#define SAMPLE_MQTT
-//#define SAMPLE_MQTT_OVER_WEBSOCKETS
-//#define SAMPLE_AMQP
-//#define SAMPLE_AMQP_OVER_WEBSOCKETS
-//#define SAMPLE_HTTP
+#ifndef ESP_AZURE_IOT_THREAD_PRIORITY
+#define ESP_AZURE_IOT_THREAD_PRIORITY                (3)
+#endif /* ESP_AZURE_IOT_THREAD_PRIORITY */
 
-#ifdef SAMPLE_MQTT
-#include "iothubtransportmqtt.h"
-#include "azure_prov_client/prov_transport_mqtt_client.h"
-#endif // SAMPLE_MQTT
-#ifdef SAMPLE_MQTT_OVER_WEBSOCKETS
-#include "iothubtransportmqtt_websockets.h"
-#include "azure_prov_client/prov_transport_mqtt_ws_client.h"
-#endif // SAMPLE_MQTT_OVER_WEBSOCKETS
-#ifdef SAMPLE_AMQP
-#include "iothubtransportamqp.h"
-#include "azure_prov_client/prov_transport_amqp_client.h"
-#endif // SAMPLE_AMQP
-#ifdef SAMPLE_AMQP_OVER_WEBSOCKETS
-#include "iothubtransportamqp_websockets.h"
-#include "azure_prov_client/prov_transport_amqp_ws_client.h"
-#endif // SAMPLE_AMQP_OVER_WEBSOCKETS
-#ifdef SAMPLE_HTTP
-#include "iothubtransportmqtt.h"
-#include "azure_prov_client/prov_transport_http_client.h"
-#endif // SAMPLE_HTTP
+#ifndef SAMPLE_IOTHUB_ENDPOINT
+#define SAMPLE_IOTHUB_ENDPOINT                  CONFIG_IOTHUB_ENDPOINT
+#endif /* SAMPLE_IOTHUB_ENDPOINT */
 
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-#include "certs.h"
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
+#ifndef SAMPLE_IOTHUB_REGISTRATION_ID
+#define SAMPLE_IOTHUB_REGISTRATION_ID           CONFIG_IOTHUB_REGISTRATION_ID
+#endif /* SAMPLE_IOTHUB_REGISTRATION_ID */
 
-// This sample is to demostrate iothub reconnection with provisioning and should not
-// be confused as production code
+#ifndef SAMPLE_IOTHUB_ID_SCOPE
+#define SAMPLE_IOTHUB_ID_SCOPE                  CONFIG_IOTHUB_ID_SCOPE
+#endif /* SAMPLE_IOTHUB_ID_SCOPE */
 
-MU_DEFINE_ENUM_STRINGS_WITHOUT_INVALID(PROV_DEVICE_RESULT, PROV_DEVICE_RESULT_VALUE);
-MU_DEFINE_ENUM_STRINGS_WITHOUT_INVALID(PROV_DEVICE_REG_STATUS, PROV_DEVICE_REG_STATUS_VALUES);
+/* Optional DEVICE KEY.  */
+#ifndef SAMPLE_DEVICE_KEY
+#define SAMPLE_DEVICE_KEY                       CONFIG_IOTHUB_DEVICE_KEY
+#endif /* SAMPLE_DEVICE_KEY */
 
-static const char* global_prov_uri = "global.azure-devices-provisioning.net";
-static const char* id_scope = CONFIG_DPS_ID_SCOPE;
+/* Optional module ID.  */
+#ifndef SAMPLE_MODULE_ID
+#define SAMPLE_MODULE_ID                        CONFIG_IOTHUB_MODULE_ID
+#endif /* SAMPLE_MODULE_ID */
 
-static bool g_use_proxy = false;
-static const char* PROXY_ADDRESS = "127.0.0.1";
+#ifndef SAMPLE_IOTHUB_WAIT_OPTION
+#define SAMPLE_IOTHUB_WAIT_OPTION               CONFIG_IOTHUB_WAIT_OPTION
+#endif /* SAMPLE_IOTHUB_WAIT_OPTION */
 
-#define PROXY_PORT                  8888
-#define MESSAGES_TO_SEND            2
-#define TIME_BETWEEN_MESSAGES       2
+#if CONFIG_IOTHUB_PROPERTY
 
-typedef struct CLIENT_SAMPLE_INFO_TAG
+/* Define sample properties count. */
+#define MAX_PROPERTY_COUNT                          2
+
+/* Define sample properties.  */
+static const char *sample_properties[MAX_PROPERTY_COUNT][2] = {{"propertyA", "valueA"},
+                                                               {"propertyB", "valueB"}};
+
+#endif
+
+static uint8_t sample_iothub_hostname[256];
+static uint8_t sample_iothub_device_id[256];
+
+static uint32_t unix_time_get(size_t *unix_time)
 {
-    unsigned int sleep_time;
-    char* iothub_uri;
-    char* access_key_name;
-    char* device_key;
-    char* device_id;
-    int registration_complete;
-} CLIENT_SAMPLE_INFO;
 
-typedef struct IOTHUB_CLIENT_SAMPLE_INFO_TAG
-{
-    int connected;
-    int stop_running;
-} IOTHUB_CLIENT_SAMPLE_INFO;
+    /* Using time() to get unix time.
+       Note: User needs to implement own time function to get the real time on device, such as: SNTP.  */
+    *unix_time = (size_t)time(NULL);
 
-static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HANDLE message, void* user_context)
-{
-    (void)message;
-    IOTHUB_CLIENT_SAMPLE_INFO* iothub_info = (IOTHUB_CLIENT_SAMPLE_INFO*)user_context;
-    (void)printf("Stop message recieved from IoTHub\r\n");
-    iothub_info->stop_running = 1;
-    return IOTHUBMESSAGE_ACCEPTED;
+    return(ESP_OK);
 }
 
-static void registration_status_callback(PROV_DEVICE_REG_STATUS reg_status, void* user_context)
+static void connection_status_callback(ESP_AZURE_IOT_HUB_CLIENT *hub_client_ptr, uint32_t status)
 {
-    (void)user_context;
-    (void)printf("Provisioning Status: %s\r\n", MU_ENUM_TO_STRING(PROV_DEVICE_REG_STATUS, reg_status));
-}
-
-static void iothub_connection_status(IOTHUB_CLIENT_CONNECTION_STATUS result, IOTHUB_CLIENT_CONNECTION_STATUS_REASON reason, void* user_context)
-{
-    (void)reason;
-    if (user_context == NULL)
-    {
-        printf("iothub_connection_status user_context is NULL\r\n");
-    }
-    else
-    {
-        IOTHUB_CLIENT_SAMPLE_INFO* iothub_info = (IOTHUB_CLIENT_SAMPLE_INFO*)user_context;
-        if (result == IOTHUB_CLIENT_CONNECTION_AUTHENTICATED)
-        {
-            iothub_info->connected = 1;
-        }
-        else
-        {
-            iothub_info->connected = 0;
-            iothub_info->stop_running = 1;
-        }
+    ESP_PARAMETER_NOT_USED(hub_client_ptr);
+    switch (status) {
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_CONNECTED:
+            printf("Connected to IoTHub.\r\n");
+            break;
+        case ESP_AZURE_IOT_HUB_CLIENT_STATUS_NOT_CONNECTED:
+            printf("Disconnected from IoTHub!: error code = 0x%08x\r\n", status);
+            break;
+        default:
+            break;
     }
 }
 
-static void register_device_callback(PROV_DEVICE_RESULT register_result, const char* iothub_uri, const char* device_id, void* user_context)
+static void iot_hub_client_sample_telemetry(ESP_AZURE_IOT_HUB_CLIENT *iothub_client)
 {
-    if (user_context == NULL)
-    {
-        printf("user_context is NULL\r\n");
-    }
-    else
-    {
-        CLIENT_SAMPLE_INFO* user_ctx = (CLIENT_SAMPLE_INFO*)user_context;
-        if (register_result == PROV_DEVICE_RESULT_OK)
+    uint32_t i = 0, index_count = 0;;
+    uint32_t status = 0;
+    char buffer[30];
+    uint32_t buffer_length;
+    ESP_PACKET *packet_ptr;
+
+    /* Loop to send telemetry message.  */
+    while (index_count ++ < 100) {
+        
+        /* Create a telemetry message packet. */
+        if ((status = esp_azure_iot_hub_client_telemetry_message_create(iothub_client, &packet_ptr, portMAX_DELAY)))
         {
-            (void)printf("Registration Information received from service: %s!\r\n", iothub_uri);
-            (void)mallocAndStrcpy_s(&user_ctx->iothub_uri, iothub_uri);
-            (void)mallocAndStrcpy_s(&user_ctx->device_id, device_id);
-            user_ctx->registration_complete = 1;
-        }
-        else
-        {
-            (void)printf("Failure encountered on registration %s\r\n", MU_ENUM_TO_STRING(PROV_DEVICE_RESULT, register_result) );
-            user_ctx->registration_complete = 2;
-        }
-    }
-}
-
-const IO_INTERFACE_DESCRIPTION* socketio_get_interface_description(void)
-{
-    return NULL;
-}
-
-int prov_dev_client_ll_sample_run()
-{
-    SECURE_DEVICE_TYPE hsm_type;
-    //hsm_type = SECURE_DEVICE_TYPE_TPM;
-    hsm_type = SECURE_DEVICE_TYPE_X509;
-    //hsm_type = SECURE_DEVICE_TYPE_SYMMETRIC_KEY;
-
-    bool traceOn = false;
-
-    (void)IoTHub_Init();
-    (void)prov_dev_security_init(hsm_type);
-    // Set the symmetric key if using they auth type
-    //prov_dev_set_symmetric_key_info("<symm_registration_id>", "<symmetric_Key>");
-
-    PROV_DEVICE_TRANSPORT_PROVIDER_FUNCTION prov_transport;
-    HTTP_PROXY_OPTIONS http_proxy;
-    CLIENT_SAMPLE_INFO user_ctx;
-
-    memset(&http_proxy, 0, sizeof(HTTP_PROXY_OPTIONS));
-    memset(&user_ctx, 0, sizeof(CLIENT_SAMPLE_INFO));
-
-    // Protocol to USE - HTTP, AMQP, AMQP_WS, MQTT, MQTT_WS
-#ifdef SAMPLE_MQTT
-    prov_transport = Prov_Device_MQTT_Protocol;
-#endif // SAMPLE_MQTT
-#ifdef SAMPLE_MQTT_OVER_WEBSOCKETS
-    prov_transport = Prov_Device_MQTT_WS_Protocol;
-#endif // SAMPLE_MQTT_OVER_WEBSOCKETS
-#ifdef SAMPLE_AMQP
-    prov_transport = Prov_Device_AMQP_Protocol;
-#endif // SAMPLE_AMQP
-#ifdef SAMPLE_AMQP_OVER_WEBSOCKETS
-    prov_transport = Prov_Device_AMQP_WS_Protocol;
-#endif // SAMPLE_AMQP_OVER_WEBSOCKETS
-#ifdef SAMPLE_HTTP
-    prov_transport = Prov_Device_HTTP_Protocol;
-#endif // SAMPLE_HTTP
-
-    // Set ini
-    user_ctx.registration_complete = 0;
-    user_ctx.sleep_time = 10;
-
-    printf("Provisioning API Version: %s\r\n", Prov_Device_LL_GetVersionString());
-    printf("Iothub API Version: %s\r\n", IoTHubClient_GetVersionString());
-
-    if (g_use_proxy)
-    {
-        http_proxy.host_address = PROXY_ADDRESS;
-        http_proxy.port = PROXY_PORT;
-    }
-
-    PROV_DEVICE_LL_HANDLE handle;
-    if ((handle = Prov_Device_LL_Create(global_prov_uri, id_scope, prov_transport)) == NULL)
-    {
-        (void)printf("failed calling Prov_Device_LL_Create\r\n");
-    }
-    else
-    {
-        if (http_proxy.host_address != NULL)
-        {
-            Prov_Device_LL_SetOption(handle, OPTION_HTTP_PROXY, &http_proxy);
+            printf("Telemetry message create failed!: error code = 0x%08x\r\n", status);
+            break;
         }
 
-        Prov_Device_LL_SetOption(handle, PROV_OPTION_LOG_TRACE, &traceOn);
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-        // Setting the Trusted Certificate.  This is only necessary on system with without
-        // built in certificate stores.
-        Prov_Device_LL_SetOption(handle, OPTION_TRUSTED_CERT, certificates);
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
-
-        // This option sets the registration ID it overrides the registration ID that is 
-        // set within the HSM so be cautious if setting this value
-        //Prov_Device_SetOption(prov_device_handle, PROV_REGISTRATION_ID, "[REGISTRATION ID]");
-
-        if (Prov_Device_LL_Register_Device(handle, register_device_callback, &user_ctx, registration_status_callback, &user_ctx) != PROV_DEVICE_RESULT_OK)
+#if CONFIG_IOTHUB_PROPERTY
+        /* Add properties to telemetry message. */
+        for (int index = 0; index < MAX_PROPERTY_COUNT; index++)
         {
-            (void)printf("failed calling Prov_Device_LL_Register_Device\r\n");
-        }
-        else
-        {
-            do
+            if ((status = esp_azure_iot_hub_client_telemetry_property_add(packet_ptr,
+                                                                   (uint8_t *)sample_properties[index][0],
+                                                                   (uint16_t)strlen(sample_properties[index][0]),
+                                                                   (uint8_t *)sample_properties[index][1],
+                                                                   (uint16_t)strlen(sample_properties[index][1]),
+                                                                   portMAX_DELAY)))
             {
-                Prov_Device_LL_DoWork(handle);
-                ThreadAPI_Sleep(user_ctx.sleep_time);
-            } while (user_ctx.registration_complete == 0);
-        }
-        Prov_Device_LL_Destroy(handle);
-    }
-
-    if (user_ctx.registration_complete != 1)
-    {
-        (void)printf("registration failed!\r\n");
-    }
-    else
-    {
-        IOTHUB_CLIENT_TRANSPORT_PROVIDER iothub_transport;
-
-        // Protocol to USE - HTTP, AMQP, AMQP_WS, MQTT, MQTT_WS
-#if defined(SAMPLE_MQTT) || defined(SAMPLE_HTTP) // HTTP sample will use mqtt protocol
-        iothub_transport = MQTT_Protocol;
-#endif // SAMPLE_MQTT
-#ifdef SAMPLE_MQTT_OVER_WEBSOCKETS
-        iothub_transport = MQTT_WebSocket_Protocol;
-#endif // SAMPLE_MQTT_OVER_WEBSOCKETS
-#ifdef SAMPLE_AMQP
-        iothub_transport = AMQP_Protocol;
-#endif // SAMPLE_AMQP
-#ifdef SAMPLE_AMQP_OVER_WEBSOCKETS
-        iothub_transport = AMQP_Protocol_over_WebSocketsTls;
-#endif // SAMPLE_AMQP_OVER_WEBSOCKETS
-
-        IOTHUB_DEVICE_CLIENT_LL_HANDLE device_ll_handle;
-
-        (void)printf("Creating IoTHub Device handle\r\n");
-        if ((device_ll_handle = IoTHubDeviceClient_LL_CreateFromDeviceAuth(user_ctx.iothub_uri, user_ctx.device_id, iothub_transport) ) == NULL)
-        {
-            (void)printf("failed create IoTHub client from connection string %s!\r\n", user_ctx.iothub_uri);
-        }
-        else
-        {
-            IOTHUB_CLIENT_SAMPLE_INFO iothub_info;
-            TICK_COUNTER_HANDLE tick_counter_handle = tickcounter_create();
-            tickcounter_ms_t current_tick;
-            tickcounter_ms_t last_send_time = 0;
-            size_t msg_count = 0;
-            iothub_info.stop_running = 0;
-            iothub_info.connected = 0;
-
-            (void)IoTHubDeviceClient_LL_SetConnectionStatusCallback(device_ll_handle, iothub_connection_status, &iothub_info);
-
-            // Set any option that are neccessary.
-            // For available options please see the iothub_sdk_options.md documentation
-
-            IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_LOG_TRACE, &traceOn);
-
-#ifdef SET_TRUSTED_CERT_IN_SAMPLES
-            // Setting the Trusted Certificate.  This is only necessary on system with without
-            // built in certificate stores.
-            IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_TRUSTED_CERT, certificates);
-#endif // SET_TRUSTED_CERT_IN_SAMPLES
-
-            (void)IoTHubDeviceClient_LL_SetMessageCallback(device_ll_handle, receive_msg_callback, &iothub_info);
-
-            (void)printf("Sending 1 messages to IoTHub every %d seconds for %d messages (Send any message to stop)\r\n", TIME_BETWEEN_MESSAGES, MESSAGES_TO_SEND);
-            do
-            {
-                if (iothub_info.connected != 0)
-                {
-                    // Send a message every TIME_BETWEEN_MESSAGES seconds
-                    (void)tickcounter_get_current_ms(tick_counter_handle, &current_tick);
-                    if ((current_tick - last_send_time) / 1000 > TIME_BETWEEN_MESSAGES)
-                    {
-                        static char msgText[1024];
-                        sprintf_s(msgText, sizeof(msgText), "{ \"message_index\" : \"%zu\" }", msg_count++);
-
-                        IOTHUB_MESSAGE_HANDLE msg_handle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText));
-                        if (msg_handle == NULL)
-                        {
-                            (void)printf("ERROR: iotHubMessageHandle is NULL!\r\n");
-                        }
-                        else
-                        {
-                            if (IoTHubDeviceClient_LL_SendEventAsync(device_ll_handle, msg_handle, NULL, NULL) != IOTHUB_CLIENT_OK)
-                            {
-                                (void)printf("ERROR: IoTHubClient_LL_SendEventAsync..........FAILED!\r\n");
-                            }
-                            else
-                            {
-                                (void)tickcounter_get_current_ms(tick_counter_handle, &last_send_time);
-                                (void)printf("IoTHubClient_LL_SendEventAsync accepted message [%zu] for transmission to IoT Hub.\r\n", msg_count);
-
-                            }
-                            IoTHubMessage_Destroy(msg_handle);
-                        }
-                    }
-                }
-                IoTHubDeviceClient_LL_DoWork(device_ll_handle);
-                ThreadAPI_Sleep(1);
-            } while (iothub_info.stop_running == 0 && msg_count < MESSAGES_TO_SEND);
-
-            size_t index = 0;
-            for (index = 0; index < 10; index++)
-            {
-                IoTHubDeviceClient_LL_DoWork(device_ll_handle);
-                ThreadAPI_Sleep(1);
+                printf("Telemetry property add failed!: error code = 0x%08x\r\n", status);
+                break;
             }
-            tickcounter_destroy(tick_counter_handle);
-            // Clean up the iothub sdk handle
-            IoTHubDeviceClient_LL_Destroy(device_ll_handle);
+        }
+        
+        if (status)
+        {
+            esp_azure_iot_hub_client_telemetry_message_delete(packet_ptr);
+            break;
+        }
+#endif
+
+        buffer_length = (uint32_t)snprintf(buffer, sizeof(buffer), "{\"Message ID\":%u}", i++);
+        if (esp_azure_iot_hub_client_telemetry_send(iothub_client, packet_ptr, (uint8_t *)buffer, buffer_length, portMAX_DELAY))
+        {
+            printf("Telemetry message send failed!: error code = 0x%08x\r\n", status);
+            esp_azure_iot_hub_client_telemetry_message_delete(packet_ptr);
+            break;
+        }
+        printf("Telemetry message send: %s.\r\n", buffer);
+
+        vTaskDelay(SAMPLE_IOTHUB_WAIT_OPTION);
+    }
+}
+
+static uint32_t iot_hub_sample_provisioning(ESP_AZURE_IOT *esp_azure_iot, uint8_t **iothub_hostname, uint32_t *iothub_hostname_length,
+                                 uint8_t **iothub_device_id, uint32_t *iothub_device_id_length)
+{
+    uint32_t status;
+
+    ESP_AZURE_IOT_PROVISIONING_CLIENT *prov_client = calloc(1, sizeof(ESP_AZURE_IOT_PROVISIONING_CLIENT));
+
+    /* Initialize IoT provisioning client.  */
+    if ((status = esp_azure_iot_provisioning_client_initialize(prov_client, esp_azure_iot,
+                                                              (uint8_t *)SAMPLE_IOTHUB_ENDPOINT, sizeof(SAMPLE_IOTHUB_ENDPOINT) - 1,
+                                                              (uint8_t *)SAMPLE_IOTHUB_ID_SCOPE, sizeof(SAMPLE_IOTHUB_ID_SCOPE) - 1,
+                                                              (uint8_t *)SAMPLE_IOTHUB_REGISTRATION_ID, sizeof(SAMPLE_IOTHUB_REGISTRATION_ID) - 1,
+                                                              NULL)))
+    {
+        printf("Failed on esp_azure_iot_provisioning_client_initialize!: error code = 0x%08x\r\n", status);
+        return(status);
+    }
+
+    /* Initialize length of hostname and device ID. */
+    *iothub_hostname_length = sizeof(sample_iothub_hostname);
+    *iothub_device_id_length = sizeof(sample_iothub_device_id);
+
+#if CONFIG_IOTHUB_USING_CERTIFICATE
+
+    /* Initialize the device certificate.  */
+    if ((status = esp_secure_x509_certificate_initialize(&device_certificate, device_cert, sizeof(device_cert), NULL, 0,
+                                                        device_private_key, sizeof(device_private_key), DEVICE_KEY_TYPE)))
+    {
+        printf("Failed on esp_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+    }
+
+    /* Set device certificate.  */
+    else if ((status = esp_azure_iot_provisioning_client_device_cert_set(prov_client, &device_certificate)))
+    {
+        printf("Failed on esp_azure_iot_provisioning_client_device_cert_set!: error code = 0x%08x\r\n", status);
+    }
+#else
+
+    /* Set symmetric key.  */
+    if ((status = esp_azure_iot_provisioning_client_symmetric_key_set(prov_client, (uint8_t *)SAMPLE_DEVICE_KEY,
+                                                                     sizeof(SAMPLE_DEVICE_KEY) - 1)))
+    {
+        printf("Failed on esp_azure_iot_hub_client_symmetric_key_set!: error code = 0x%08x\r\n", status);
+    }
+#endif /* USE_DEVICE_CERTIFICATE */
+
+    /* Register device */
+    else if ((status = esp_azure_iot_provisioning_client_register(prov_client, portMAX_DELAY)))
+    {
+        printf("Failed on esp_azure_iot_provisioning_client_register!: error code = 0x%08x\r\n", status);
+    }
+
+    /* Get Device info */
+    else if ((status = esp_azure_iot_provisioning_client_iothub_device_info_get(prov_client,
+                                                                               sample_iothub_hostname, iothub_hostname_length,
+                                                                               sample_iothub_device_id, iothub_device_id_length)))
+    {
+        printf("Failed on esp_azure_iot_provisioning_client_iothub_device_info_get!: error code = 0x%08x\r\n", status);
+    }
+    else
+    {
+        *iothub_hostname = sample_iothub_hostname;
+        *iothub_device_id = sample_iothub_device_id;
+    }
+
+    /* Destroy Provisioning Client.  */
+    esp_azure_iot_provisioning_client_deinitialize(prov_client);
+    free(prov_client);
+    prov_client = NULL;
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
+    return(status);
+}
+
+int prov_dev_client_ll_sample_run(void) 
+{
+    uint32_t                    status = 0;
+    ESP_AZURE_IOT               *esp_azure_iot = NULL;
+    ESP_AZURE_IOT_HUB_CLIENT    *iothub_client = NULL;
+    uint8_t                     *iothub_hostname = NULL;
+    uint8_t                     *iothub_device_id = NULL;
+    uint32_t                    iothub_hostname_length = 0;
+    uint32_t                    iothub_device_id_length = 0;
+
+    /* Init Azure IoT Time Handle */
+    if (esp_azure_iot_time_init()) {
+        (void)printf("Failed to initialize the platform.\r\n");
+        return ESP_FAIL;
+    }
+
+    while (1) {
+        esp_azure_iot = calloc(1, sizeof(ESP_AZURE_IOT));
+        if (!esp_azure_iot) {
+            printf("Failed to initialize the azure.\r\n");
+            break;
+        }
+
+        do {
+            /* Create Azure IoT handler.  */
+            if ((status = esp_azure_iot_create(esp_azure_iot, (uint8_t *)"Azure IoT", ESP_AZURE_IOT_STACK_SIZE,
+                                            ESP_AZURE_IOT_THREAD_PRIORITY, unix_time_get)))
+            {
+                printf("Failed on esp_azure_iot_create!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+            if ((status = iot_hub_sample_provisioning(esp_azure_iot, &iothub_hostname, &iothub_hostname_length,
+                                        &iothub_device_id, &iothub_device_id_length)))
+            {
+                printf("Failed on iot_hub_sample_provisioning!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+            iothub_client = calloc(1, sizeof(ESP_AZURE_IOT_HUB_CLIENT));
+            if (!iothub_client) {
+                printf("Failed to initialize the azure iot.\r\n");
+                break;
+            }
+
+            /* Initialize IoTHub client. */
+            if ((status = esp_azure_iot_hub_client_initialize(iothub_client, esp_azure_iot,
+                                                            iothub_hostname, iothub_hostname_length,
+                                                            iothub_device_id, iothub_device_id_length,
+                                                            (uint8_t *)SAMPLE_MODULE_ID, sizeof(SAMPLE_MODULE_ID) - 1,
+                                                            NULL)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_initialize!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+#if CONFIG_IOTHUB_USING_CERTIFICATE
+
+            /* Initialize the device certificate.  */
+            if ((status = esp_secure_x509_certificate_initialize(&device_certificate, device_cert, sizeof(device_cert),
+                                                                    NULL, 0, device_private_key, sizeof(device_private_key),
+                                                                    DEVICE_KEY_TYPE)))
+            {
+                printf("Failed on esp_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+                break;
+            }
+
+            /* Set device certificate.  */
+            if ((status = esp_azure_iot_hub_client_device_cert_set(iothub_client, &device_certificate)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_device_cert_set!: error code = 0x%08x\r\n", status);
+                break;
+            }
+#else
+
+            /* Set symmetric key.  */
+            if ((status = esp_azure_iot_hub_client_symmetric_key_set(iothub_client, (uint8_t *)SAMPLE_DEVICE_KEY, sizeof(SAMPLE_DEVICE_KEY) - 1)))
+            {
+                printf("Failed on esp_azure_iot_hub_client_symmetric_key_set!\r\n");
+                break;
+            }
+#endif /* USE_DEVICE_CERTIFICATE */
+
+            /* Set connection status callback. */
+            if (esp_azure_iot_hub_client_connection_status_callback_set(iothub_client, connection_status_callback))
+            {
+                printf("Failed on connection_status_callback!\r\n");
+            }
+
+            /* Connect to IoTHub client. */
+            if (esp_azure_iot_hub_client_connect(iothub_client, true, portMAX_DELAY))
+            {
+                printf("Failed on esp_azure_iot_hub_client_connect!\r\n");
+            }
+
+            /* Run telemetry sample. */
+            iot_hub_client_sample_telemetry(iothub_client);
+
+        } while (0);
+
+        /* Destroy IoTHub Client.  */
+        esp_azure_iot_hub_client_disconnect(iothub_client);
+        esp_azure_iot_hub_client_deinitialize(iothub_client);
+        esp_azure_iot_delete(esp_azure_iot);
+
+        /* Destory azure iot.  */
+        if (iothub_client) {
+            free(iothub_client);
+            iothub_client = NULL;
+        }
+
+        if (esp_azure_iot) {
+            free(esp_azure_iot);
+            esp_azure_iot = NULL;
         }
     }
-    free(user_ctx.iothub_uri);
-    free(user_ctx.device_id);
-    prov_dev_security_deinit();
 
-    // Free all the sdk subsystem
-    IoTHub_Deinit();
-
-    (void)getchar();
-
-    return 0;
+    return ESP_OK;
 }

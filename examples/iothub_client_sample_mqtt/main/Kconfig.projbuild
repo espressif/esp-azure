@@ -14,26 +14,60 @@ config WIFI_PASSWORD
 
 		Can be left blank if the network has no security set.
 
-config IOTHUB_CONNECTION_STRING
-    string "IOT Hub Device Connection String"
+choice IOTHUB_AUTH_CHOOSE
+        prompt "Choose Azure IoT Hub for authenticate (See help for more Info)"
+        default IOTHUB_USING_DEVICE_KEY
+        help
+            The Azure IoT Hub support multiple authenticate. Currently Certificate and Symmetric Key are
+            supported.
+        config IOTHUB_USING_CERTIFICATE
+            bool "Certificate"
+        config IOTHUB_USING_DEVICE_KEY
+            bool "Device Key"
+endchoice
+
+config IOTHUB_HOST_NAME
+    string "IOT Hub Device Host Name"
 	default ""
 	help
-		String containing Hostname, Device Id & Device Key in the format:
-		HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
-		You can get this from the Azure IoT CLI or the Azure Portal.
+        Device Host Name can be picked from device connection string which is of format: 
+        HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+        You can get this from the Azure IoT CLI or the Azure Portal.
 
-config MESSAGE_INTERVAL_TIME
-    int "Time delay in Milliseconds between two consecutive messages"
-    default 100
-    help
-        Set time delay between two consecutive message sent to the cloud
+config IOTHUB_DEVICE_ID
+    string "IOT Hub Device ID"
+	default ""
+	help
+        Device ID can be picked from device connection string which is of format:
+        HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+        You can get this from the Azure IoT CLI or the Azure Portal.
 
-config MESSAGE_COUNT
-    int "Total number of messages to be sent to the cloud"
-    default 50
-    help
-        This example will terminate after sending these many
-        messages. If the message count is set as 0 then this example
-        will send indefinite messages to the cloud.
+config IOTHUB_DEVICE_KEY
+    string "IOT Hub Device Key"
+    depends on IOTHUB_USING_DEVICE_KEY
+    default ""
+	help
+        Device key can be picked from device connection string which is of format: 
+        HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+        You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_MODULE_ID
+            string "IOT Hub Device Module ID"
+            default ""
+            help
+                Module ID, You can get this from the Azure IoT CLI or the Azure Portal.
+
+config IOTHUB_PROPERTY
+            bool "IOT Hub Device Property"
+            default n
+            help
+                Enable or Disable the device's properties when send to or receive from cloud.
+
+config IOTHUB_WAIT_OPTION
+        int "Time wait in Milliseconds between two consecutive messages"
+        range   100 65536
+        default 100
+        help
+            Set time delay between two consecutive message receive from the cloud.
 
 endmenu

@@ -1,0 +1,2 @@
+COMPONENT_SRCDIRS := src pnp
+COMPONENT_ADD_INCLUDEDIRS := include pnp

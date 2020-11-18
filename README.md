@@ -12,7 +12,7 @@
 
 <a name="introduction"></a>
 
-The ESP Azure IoT SDK is based on [Azure IoT C SDK](https://github.com/Azure/azure-iot-sdk-c) and enables users to connect their ESP32 based devices to the Azure IoT hub. It provides some examples which can help understand most common use cases.
+The ESP Azure IoT SDK is based on [Azure SDK For C](https://github.com/Azure/azure-sdk-for-c) and enables users to connect their ESP32 based devices to the Azure IoT hub. It provides some examples which can help understand most common use cases.
 
 ## Getting Started
 
