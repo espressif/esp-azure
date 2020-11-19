@@ -5,6 +5,6 @@
 
 PROJECT_NAME := pnp_temperature_controller
 
-EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../../esp-azure-new
+EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)/../../../../esp-azure
 
 include $(IDF_PATH)/make/project.mk
