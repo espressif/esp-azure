@@ -1,6 +1,5 @@
 stages:
   - build_esp32
-  - build_esp8266
 
 variables:
   BATCH_BUILD: "1"
@@ -31,45 +30,9 @@ build_esp32_demo:
     - . export.sh
     - cd ..
     - cd examples/azure_iot_pnp_sample/pnp_temperature_controller
-    - make defconfig
-    - make -j5
-    - cd ../../../
-    - cd examples/iothub_client_sample_mqtt
-    - make defconfig
-    - make -j5
-    - cd ../../
-    - cd examples/iothub_devicetwin_samples_and_methods
-    - make defconfig
-    - make -j5
-    - cd ../../
-    - cd examples/prov_dev_client_ll_sample
-    - make defconfig
-    - make -j5
-
-build_esp8266_demo:
-  stage: build_esp8266
-  image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new 
-  tags:
-    - build
-  script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git clone -b v3.3 --recursive --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
-    - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
-    - cd examples/iothub_client_sample_mqtt
-    - make defconfig
-    - make -j5
-    - cd ../../
-    - cd examples/iothub_devicetwin_samples_and_methods
-    - make defconfig
-    - make -j5
-    - cd ../../
-    - cd examples/prov_dev_client_ll_sample
-    - make defconfig
-    - make -j5
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - echo "CONFIG_COMPILER_OPTIMIZATION_LEVEL_RELEASE=y" >> sdkconfig.defaults
+    - make defconfig && make -j5
+    - make clean && rm sdkconfig && rm -r build
+    - idf.py build
