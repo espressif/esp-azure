@@ -1,0 +1,12 @@
+set(mbed_exported_project_files
+		${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_umqtt_c/mqtt_client.h
+		${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_umqtt_c/mqtt_codec.h
+		${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_umqtt_c/mqtt_message.h
+		${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_umqtt_c/mqttconst.h
+        )
+
+set(mbed_project_files
+		${CMAKE_CURRENT_SOURCE_DIR}/../../src/mqtt_client.c
+		${CMAKE_CURRENT_SOURCE_DIR}/../../src/mqtt_codec.c
+		${CMAKE_CURRENT_SOURCE_DIR}/../../src/mqtt_message.c
+		)

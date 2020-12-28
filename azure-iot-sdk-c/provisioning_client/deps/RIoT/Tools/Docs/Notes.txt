@@ -1,0 +1,7 @@
+
+This solution contains tools and utilities for testing DICE/RIoT systems.
+
+DICETest - Command-line tool that checks certificates and certificate chains created by DICE/RIoT systems
+RIoT     - More in-depth certificate testing, including TLS tests
+RIoTDemo - (deprecated)
+TlsClient - (deprecated)

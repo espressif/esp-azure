@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>DiceRiotEmulator</id>
+        <version>1.0.0</version>
+        <title>DICE/RIoT Emulator</title>
+        <authors>Microsoft Research</authors>
+        <owners>diceriot,Microsoft</owners>
+        <licenseUrl>https://github.com/Microsoft/RIoT/blob/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/Microsoft/RIoT/</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Developers can use the software emulator for DICE/RIoT to simulate inputs to DICE hardware and create RIoT keys and certificates based on that input.</description>
+        <summary>The DICE/RIoT Emulator for .Net</summary>
+        <copyright>© Microsoft Corporation. All rights reserved.</copyright>
+        <dependencies>
+            <dependency id="BouncyCastle" version="1.8.1" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="lib\net452\DiceRiotEmulator.dll" target="lib\net452\DiceRiotEmulator.dll" />
+    </files>
+</package>

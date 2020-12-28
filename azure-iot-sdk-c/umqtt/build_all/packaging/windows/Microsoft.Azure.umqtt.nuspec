@@ -1,0 +1,42 @@
+<?xml version="1.0"?><package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+    <metadata>
+        <id>Microsoft.Azure.umqtt</id>
+        <version>1.1.4</version>
+        <title>Microsoft Azure umqtt</title>
+        <authors>Microsoft Corp</authors>
+        <owners>Azure-IoT</owners>
+        <licenseUrl>https://github.com/Azure/azure-umqtt-c/blob/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/Azure/azure-umqtt-c</projectUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>Microsoft Azure uMQTT library</description>
+        <iconUrl>http://go.microsoft.com/fwlink/?LinkID=288890</iconUrl>
+        <summary>This nuget package can be used for developing mqtt applications and libraries</summary>
+        <copyright>Copyright 2016</copyright>
+        <tags>Microsoft Azure C Native x86 x64 native umqtt package</tags>
+        <dependencies>
+            <dependency id="Microsoft.Azure.C.SharedUtility" version="1.1.4"/>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="Microsoft.Azure.umqtt_thirdpartynotice.txt" target="thirdpartynotice.txt"/>
+
+        <!-- these are files for x86 plaform -->
+        <file src="..\..\..\cmake\azure_mqtt_output\win32\debug\umqtt.lib" target="build\native\Win32\Debug"/>
+        <file src="..\..\..\cmake\azure_mqtt_output\win32\debug\umqtt.pdb" target="build\native\Win32\Debug"/>
+        <file src="..\..\..\cmake\azure_mqtt_output\win32\release\umqtt.lib" target="build\native\Win32\Release"/>
+
+        <!-- these are files for x64 plaform -->
+        <file src="..\..\..\cmake\azure_mqtt_output\x64\debug\umqtt.lib" target="build\native\x64\Debug"/>
+        <file src="..\..\..\cmake\azure_mqtt_output\x64\debug\umqtt.pdb" target="build\native\x64\Debug"/>
+        <file src="..\..\..\cmake\azure_mqtt_output\x64\release\umqtt.lib" target="build\native\x64\Release"/>
+
+      <!-- these are files for arm plaform -->
+      <file src="..\..\..\cmake\azure_mqtt_output\arm\debug\umqtt.lib" target="build\native\arm\Debug"/>
+      <file src="..\..\..\cmake\azure_mqtt_output\arm\debug\umqtt.pdb" target="build\native\arm\Debug"/>
+      <file src="..\..\..\cmake\azure_mqtt_output\arm\release\umqtt.lib" target="build\native\arm\Release"/>
+
+      <file src="Microsoft.Azure.umqtt.targets" target="build\native"/>
+
+        <file src="..\..\..\inc\azure_umqtt_c\*.h" target="build\native\include\azure_umqtt_c"/>
+    </files>
+</package>

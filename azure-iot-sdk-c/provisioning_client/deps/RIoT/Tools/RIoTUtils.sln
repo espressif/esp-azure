@@ -1,0 +1,83 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIoT", "RIoT\RIoT.csproj", "{20A30499-7F02-446F-8716-E85FCDBB0CE4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TlsClient", "TlsClient\TlsClient.vcxproj", "{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{590E0BE7-0E85-4923-AD6D-7DA0E2F7FF1C}"
+	ProjectSection(SolutionItems) = preProject
+		Docs\Notes.txt = Docs\Notes.txt
+		Docs\RiotUtils.docx = Docs\RiotUtils.docx
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIoTDemo", "RIoTDemo\RIoTDemo.csproj", "{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DICETest", "DICETest\DICETest.csproj", "{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|x64.Build.0 = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Debug|x86.Build.0 = Debug|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|x64.ActiveCfg = Release|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|x64.Build.0 = Release|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|x86.ActiveCfg = Release|Any CPU
+		{20A30499-7F02-446F-8716-E85FCDBB0CE4}.Release|x86.Build.0 = Release|Any CPU
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Debug|x64.ActiveCfg = Debug|x64
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Debug|x64.Build.0 = Debug|x64
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Debug|x86.ActiveCfg = Debug|Win32
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Debug|x86.Build.0 = Debug|Win32
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Release|Any CPU.ActiveCfg = Release|Win32
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Release|x64.ActiveCfg = Release|x64
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Release|x64.Build.0 = Release|x64
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Release|x86.ActiveCfg = Release|Win32
+		{E144BF89-3BEA-402C-B58A-A3DB2AC68F67}.Release|x86.Build.0 = Release|Win32
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|x64.Build.0 = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Debug|x86.Build.0 = Debug|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|x64.ActiveCfg = Release|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|x64.Build.0 = Release|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|x86.ActiveCfg = Release|Any CPU
+		{70669FD8-B9BB-4EA2-B9BB-6E387B2E5788}.Release|x86.Build.0 = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|x64.Build.0 = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Debug|x86.Build.0 = Debug|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|x64.ActiveCfg = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|x64.Build.0 = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|x86.ActiveCfg = Release|Any CPU
+		{3717E055-2380-4A9F-8D6E-7E6B980EA3C6}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		EnterpriseLibraryConfigurationToolBinariesPathV6 = packages\EnterpriseLibrary.TransientFaultHandling.6.0.1304.0\lib\portable-net45+win+wp8
+	EndGlobalSection
+EndGlobal

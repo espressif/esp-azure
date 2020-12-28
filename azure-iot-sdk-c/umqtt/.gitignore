@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/build_all/windows/nuget.exe
+/cmake
+/build
+/devdoc/~$o_requirements.docm
+*.jar
+
+/.vscode/*

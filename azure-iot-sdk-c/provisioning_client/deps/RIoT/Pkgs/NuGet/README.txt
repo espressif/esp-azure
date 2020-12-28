@@ -1,0 +1,1 @@
+The project/nuspec and test application for the DICE/RIoT Emulator for .Net
