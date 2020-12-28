@@ -75,6 +75,7 @@ typedef struct TLS_IO_INSTANCE_TAG
     TLS_CERTIFICATE_VALIDATION_CALLBACK tls_validation_callback;
     void* tls_validation_callback_data;
     char* hostname;
+    bool ignore_host_name_check;
 } TLS_IO_INSTANCE;
 
 struct CRYPTO_dynlock_value
@@ -932,6 +933,31 @@ static int add_certificate_to_store(TLS_IO_INSTANCE* tls_io_instance, const char
     return result;
 }
 
+static int enable_domain_check(TLS_IO_INSTANCE* tlsInstance)
+{
+    int result = 0;
+
+    if (!tlsInstance->ignore_host_name_check)
+    {
+#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
+#error "OpenSSL v1.0.2 or above required. See https://wiki.openssl.org/index.php/Hostname_validation for details."
+#endif
+        X509_VERIFY_PARAM *param = SSL_get0_param(tlsInstance->ssl);
+
+        X509_VERIFY_PARAM_set_hostflags(param, 0);
+        if (!X509_VERIFY_PARAM_set1_host(param, tlsInstance->hostname, strlen(tlsInstance->hostname)))
+        {
+            result = MU_FAILURE;
+        }
+        else
+        {
+            SSL_set_verify(tlsInstance->ssl, SSL_VERIFY_PEER, NULL);
+        }
+    }
+
+    return result;
+}
+
 static int create_openssl_instance(TLS_IO_INSTANCE* tlsInstance)
 {
     int result;
@@ -1055,7 +1081,18 @@ static int create_openssl_instance(TLS_IO_INSTANCE* tlsInstance)
                         (void)BIO_free(tlsInstance->out_bio);
                         SSL_CTX_free(tlsInstance->ssl_context);
                         tlsInstance->ssl_context = NULL;
-                        log_ERR_get_error("Failed setting SSL hostname.");
+                        log_ERR_get_error("Failed setting SNI hostname hint.");
+                        result = MU_FAILURE;
+                    }
+                    else if (enable_domain_check(tlsInstance))
+                    {
+                        SSL_free(tlsInstance->ssl);
+                        tlsInstance->ssl = NULL;
+                        (void)BIO_free(tlsInstance->in_bio);
+                        (void)BIO_free(tlsInstance->out_bio);
+                        SSL_CTX_free(tlsInstance->ssl_context);
+                        tlsInstance->ssl_context = NULL;
+                        log_ERR_get_error("Failed to configure domain name verification.");
                         result = MU_FAILURE;
                     }
                     else
@@ -1183,6 +1220,7 @@ CONCRETE_IO_HANDLE tlsio_openssl_create(void* io_create_parameters)
                 result->tls_validation_callback_data = NULL;
                 result->x509_certificate = NULL;
                 result->x509_private_key = NULL;
+                result->ignore_host_name_check = false;
 
                 result->tls_version = VERSION_1_2;
 
@@ -1638,8 +1676,10 @@ int tlsio_openssl_setoption(CONCRETE_IO_HANDLE tls_io, const char* optionName, c
             // No need to do anything for Openssl
             result = 0;
         }
-        else if (strcmp("ignore_server_name_check", optionName) == 0)
+        else if (strcmp("ignore_host_name_check", optionName) == 0)
         {
+            bool* server_name_check = (bool*)value;
+            tls_io_instance->ignore_host_name_check = *server_name_check;
             result = 0;
         }
         else

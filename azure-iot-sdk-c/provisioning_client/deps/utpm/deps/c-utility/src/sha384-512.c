@@ -468,6 +468,9 @@ int SHA512Input(SHA512Context *context,
     uint64_t addTemp;
     if (!length)
         return shaSuccess;
+    
+    if (length > (sizeof(context->Message_Block) / sizeof(context->Message_Block[0])))
+        return shaBadParam;
 
     if (!context || !message_array)
         return shaNull;

@@ -691,10 +691,11 @@ static void on_send_complete(void* context, IO_SEND_RESULT send_result)
     ASYNC_OPERATION_HANDLE pending_delivery_operation = (ASYNC_OPERATION_HANDLE)singlylinkedlist_item_get_value(delivery_instance_list_item);
     DELIVERY_INSTANCE* delivery_instance = (DELIVERY_INSTANCE*)GET_ASYNC_OPERATION_CONTEXT(DELIVERY_INSTANCE, pending_delivery_operation);
     LINK_HANDLE link = (LINK_HANDLE)delivery_instance->link;
+
     (void)send_result;
     if (link->snd_settle_mode == sender_settle_mode_settled)
     {
-        delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, LINK_DELIVERY_SETTLE_REASON_SETTLED, NULL);
+        delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, send_result == IO_SEND_OK ? LINK_DELIVERY_SETTLE_REASON_SETTLED : LINK_DELIVERY_SETTLE_REASON_NOT_DELIVERED, NULL);
         async_operation_destroy(pending_delivery_operation);
         (void)singlylinkedlist_remove(link->pending_deliveries, delivery_instance_list_item);
     }

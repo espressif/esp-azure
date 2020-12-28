@@ -3,6 +3,10 @@ import sys
 import time
 try:
     from testtools.UART_interface.base_uart_interface import uart_interface
+except:
+    from base_uart_interface import uart_interface
+
+try:
     import testtools.UART_interface.azure_test_firmware_errors as azure_test_firmware_errors
     import testtools.UART_interface.serial_settings as serial_settings
     import testtools.UART_interface.serial_commands_dict as commands_dict
@@ -10,7 +14,6 @@ except:
     import azure_test_firmware_errors
     import serial_settings
     import serial_commands_dict as commands_dict
-    from base_uart_interface import uart_interface
 
 
 # ------- global usecase fcns -------
@@ -21,12 +24,9 @@ def check_sdk_errors(line):
     local_line = line.lower()
     if "error" in local_line or "fail" in local_line:
         if "epoch time failed!" in local_line: # don't count NTP retries.
-            azure_test_firmware_errors.SDK_ERRORS += 0
+            pass
         else:
             azure_test_firmware_errors.SDK_ERRORS += 1
-
-# missing test_failures method, may not need due to this being a sample,
-# not a series of tests
 
 def check_firmware_errors(line):
     if azure_test_firmware_errors.iot_init_failure in line:
@@ -117,6 +117,7 @@ class esp_uart_interface(uart_interface):
             except:
                 return None
 
+    # Note: the buffer size on the mxchip appears to be 128 Bytes.
     def write_read(self, ser, input_file, output_file):
         if 'esp32' in serial_settings.device_type:
             serial_settings.bits_to_cache = 800
@@ -159,7 +160,5 @@ class esp_uart_interface(uart_interface):
 
                 # forward failed callbacks to SDK_ERRORS
                 azure_test_firmware_errors.SDK_ERRORS += self.messages_sent - self.message_callbacks
-                with open('exitcode.txt', 'w') as fexit:
-                    fexit.write('%d' %azure_test_firmware_errors.SDK_ERRORS)
 
                 output_file_obj.close()
