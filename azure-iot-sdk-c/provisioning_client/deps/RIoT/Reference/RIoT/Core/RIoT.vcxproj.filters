@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>Ignore</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Ignore</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotAes128.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotAesTables.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotCrypt.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotEcc.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotHmac.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotKdf.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotSha256.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotBase64.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotDerEnc.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+    <ClCompile Include="RIoTCrypt\RiotX509Bldr.c">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="targetver.h">
+      <Filter>Ignore</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Ignore</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotAes128.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotCrypt.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotEcc.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotHmac.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotKdf.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotSha256.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotTarget.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTSim.h">
+      <Filter>Ignore</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RiotStatus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotBase64.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotDerEnc.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="RIoTCrypt\include\RiotX509Bldr.h">
+      <Filter>Source Files\RIoTCrypt</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Ignore">
+      <UniqueIdentifier>{771665da-df93-4f4a-9295-8a1dff1fcda6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{8ec5003f-cc85-4a86-86b1-fb45f3b0a096}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{d98b2f81-2200-4dd2-8325-d85667c038ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\RIoTCrypt">
+      <UniqueIdentifier>{8154c665-1e08-4aa5-84b9-76d6c7a4dcb8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

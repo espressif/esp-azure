@@ -277,8 +277,8 @@ static CURLcode ssl_ctx_callback(CURL *curl, void *ssl_ctx, void *userptr)
             (httpHandleData->x509certificate != NULL) &&
             (httpHandleData->x509privatekey != NULL) &&
             (
-             ((wolfSSL_CTX_use_certificate_chain_buffer(ssl_ctx, (unsigned char*)httpHandleData->x509certificate, strlen(httpHandleData->x509certificate)) != SSL_SUCCESS)) ||
-             ((wolfSSL_CTX_use_PrivateKey_buffer(ssl_ctx, (unsigned char*)httpHandleData->x509privatekey, strlen(httpHandleData->x509privatekey), SSL_FILETYPE_PEM) != SSL_SUCCESS))
+             ((wolfSSL_use_certificate_chain_buffer(ssl_ctx, (unsigned char*)httpHandleData->x509certificate, strlen(httpHandleData->x509certificate)) != SSL_SUCCESS)) ||
+             ((wolfSSL_use_PrivateKey_buffer(ssl_ctx, (unsigned char*)httpHandleData->x509privatekey, strlen(httpHandleData->x509privatekey), SSL_FILETYPE_PEM) != SSL_SUCCESS))
             )
             )
         {

@@ -23,7 +23,7 @@ static double getExpiryValue(const char* expiryASCII)
     {
         if (expiryASCII[i] >= '0' && expiryASCII[i] <= '9')
         {
-            value = value * 10 + ((double)expiryASCII[i] - (double)'0');
+            value = value * 10 + (double)(expiryASCII[i] - '0');
         }
         else
         {

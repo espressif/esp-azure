@@ -325,10 +325,10 @@ static int on_io_recv(void *context, unsigned char *buf, size_t sz)
             }
         }
 
-        result = (int) tls_io_instance->socket_io_read_byte_count;
+        result = tls_io_instance->socket_io_read_byte_count;
         if (result > (int)sz)
         {
-            result = (int)sz;
+            result = sz;
         }
 
         if (result > 0)
@@ -399,7 +399,7 @@ static int on_io_send(void *context, const unsigned char *buf, size_t sz)
     {
         TLS_IO_INSTANCE *tls_io_instance = (TLS_IO_INSTANCE *)context;
         ON_SEND_COMPLETE on_complete_callback = NULL;
-        context = NULL;
+        void *context = NULL;
 
         // Only allow Application data type message to send on_send_complete callback.
         if (tls_io_instance->ssl.out_msgtype == MBEDTLS_SSL_MSG_APPLICATION_DATA)
@@ -415,7 +415,7 @@ static int on_io_send(void *context, const unsigned char *buf, size_t sz)
         }
         else
         {
-            result = (int)sz;
+            result = sz;
         }
     }
     return result;
@@ -441,7 +441,6 @@ static void mbedtls_uninit(TLS_IO_INSTANCE *tls_io_instance)
     {
         // mbedTLS cleanup...
         mbedtls_ssl_free(&tls_io_instance->ssl);
-        mbedtls_ssl_session_free(&tls_io_instance->ssn);
         mbedtls_ssl_config_free(&tls_io_instance->config);
         mbedtls_x509_crt_free(&tls_io_instance->trusted_certificates_parsed);
         mbedtls_x509_crt_free(&tls_io_instance->owncert);
@@ -733,7 +732,7 @@ int tlsio_mbedtls_send(CONCRETE_IO_HANDLE tls_io, const void *buffer, size_t siz
             tls_io_instance->send_complete_info.on_send_complete = on_send_complete;
             tls_io_instance->send_complete_info.on_send_complete_callback_context = callback_context;
             tls_io_instance->send_complete_info.last_fragmented_req_status = IO_SEND_OK;
-            int out_left = (int)size;
+            int out_left = size;
             result = 0;
 
             do

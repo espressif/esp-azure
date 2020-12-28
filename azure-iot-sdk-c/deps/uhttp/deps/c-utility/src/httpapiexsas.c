@@ -106,9 +106,9 @@ HTTPAPIEX_SAS_HANDLE HTTPAPIEX_SAS_Create(STRING_HANDLE key, STRING_HANDLE uriRe
 void HTTPAPIEX_SAS_Destroy(HTTPAPIEX_SAS_HANDLE handle)
 {
     /*Codes_SRS_HTTPAPIEXSAS_06_005: [If the parameter handle is NULL then HTTAPIEX_SAS_Destroy shall do nothing and return.]*/
-    HTTPAPIEX_SAS_STATE* state = (HTTPAPIEX_SAS_STATE*)handle;
-    if (state)
+    if (handle)
     {
+        HTTPAPIEX_SAS_STATE* state = (HTTPAPIEX_SAS_STATE*)handle;
         /*Codes_SRS_HTTPAPIEXSAS_06_006: [HTTAPIEX_SAS_Destroy shall deallocate any structures denoted by the parameter handle.]*/
         if (state->key)
         {

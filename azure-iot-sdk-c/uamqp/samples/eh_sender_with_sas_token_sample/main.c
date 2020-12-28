@@ -245,8 +245,6 @@ int main(int argc, char** argv)
                     }
                 }
             }
-
-            tickcounter_destroy(tick_counter);
         }
 
         cbs_destroy(cbs);

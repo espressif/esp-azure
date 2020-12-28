@@ -540,15 +540,10 @@ int BUFFER_prepend(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
         else
         {
             //put b2 ahead of b1: [b2][b1], return b1
-            if (b2->size == 0)
+            if (b2->size ==0)
             {
                 // do nothing
                 result = 0;
-            }
-            else if (b1->size + b2->size < b2->size)
-            {
-                LogError("Failure: size_t overflow.");
-                result = MU_FAILURE;
             }
             else
             {

@@ -251,9 +251,10 @@ the included "socket_async_os.h" file, which contains os-specific headers.
 
 #### Existing _chained_ tlsio implementations
 _Chained_ adapter implementations include:
-- [tlsio_openssl for Windows, Linux, and Mac](https://github.com/Azure/azure-c-shared-utility/blob/master/adapters/tlsio_openssl.c)
-- [tlsio_schannel for Windows only](https://github.com/Azure/azure-c-shared-utility/blob/master/adapters/tlsio_schannel.c)
-- [tlsio_wolfssl for embedded devices](https://github.com/Azure/azure-c-shared-utility/blob/master/adapters/tlsio_wolfssl.c)
+- [tlsio_openssl for Windows, Linux, and Mac](https://github.com/Azure/azure-c-shared-utility/blob/master/src/tlsio_openssl.c)
+- [tlsio_schannel for Windows only](https://github.com/Azure/azure-c-shared-utility/blob/master/src/tlsio_schannel.c)
+- [tlsio_wolfssl for embedded devices](https://github.com/Azure/azure-c-shared-utility/blob/master/src/tlsio_wolfssl.c)
+- [tlsio_cyclonessl for embedded devices](https://github.com/Azure/azure-c-shared-utility/blob/master/src/tlsio_cyclonessl.c)
 - [tlsio_mbedtls for mbed](https://github.com/Azure/azure-c-shared-utility/blob/master/adapters/tlsio_mbedtls.c)
 
 #### Existing socketio implementations for _chained_ tlsio adapters

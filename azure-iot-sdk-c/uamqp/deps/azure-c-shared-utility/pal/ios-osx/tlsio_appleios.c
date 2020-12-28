@@ -521,14 +521,7 @@ static void dowork_poll_socket(TLS_IO_INSTANCE* tls_io_instance)
     CFStreamCreatePairWithSocketToHost(NULL, tls_io_instance->hostname, tls_io_instance->port, &tls_io_instance->sockRead, &tls_io_instance->sockWrite);
     if (tls_io_instance->sockRead != NULL && tls_io_instance->sockWrite != NULL)
     {
-        
-        CFStringRef keys[1] = {kCFStreamPropertySocketSecurityLevel};
-        CFStringRef values[1] = {kCFStreamSocketSecurityLevelNegotiatedSSL};
-
-        CFDictionaryRef tls_io_dictionary = CFDictionaryCreate(NULL , (void *)keys , (void *)values , 1,  NULL , NULL);
-        
-        if (CFReadStreamSetProperty(tls_io_instance->sockRead, kCFStreamPropertySSLSettings, tls_io_dictionary))
-
+        if (CFReadStreamSetProperty(tls_io_instance->sockRead, kCFStreamPropertySSLSettings, kCFStreamSocketSecurityLevelNegotiatedSSL))
         {
             tls_io_instance->tlsio_state = TLSIO_STATE_OPENING_WAITING_SSL;
         }
@@ -537,8 +530,6 @@ static void dowork_poll_socket(TLS_IO_INSTANCE* tls_io_instance)
             LogError("Failed to set socket properties");
             enter_open_error_state(tls_io_instance);
         }
-        
-        CFRelease(tls_io_dictionary);
     }
     else
     {

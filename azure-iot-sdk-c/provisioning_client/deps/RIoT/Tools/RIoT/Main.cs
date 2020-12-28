@@ -67,8 +67,6 @@ namespace RIoT
             bool ok = ParseParms(args);
             if (!ok) return;
 
-            string workingDir = Environment.CurrentDirectory;
-
             foreach(var action in ActiveParms)
             {
                 if (action.Flag == "dir")

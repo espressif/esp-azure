@@ -18,12 +18,6 @@ namespace DICETest
         {
             // Usage:
             // -option c0 c1 c2...
-
-            // Examples:
-            // -chain AliasCert.PEM DeviceIDCrt.PEM R00tCrt.PEM
-            // -chain AliasCert.PEM DeviceIDCrt.PEM 
-            // -csr DeviceIDCrt.PEM
-
             if (args.Length == 0 || args[1] == "?")
             {
                 PrintHelp();
@@ -49,7 +43,6 @@ namespace DICETest
                 {
                     Program.Print("One or more errors in certificate chain.", NotifyType.Error);
                 }
-                else
                 {
                     Program.Print("Certificates and certificate chain are valid.", NotifyType.Success);
                 }
