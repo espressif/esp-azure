@@ -1,0 +1,18 @@
+#Copyright (c) Microsoft. All rights reserved.
+#Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+cmake_minimum_required(VERSION 2.8.11)
+
+#this is CMakeLists for provisioning service client tests folder
+add_unittest_directory(provisioning_sc_attestation_ut)
+add_unittest_directory(provisioning_sc_enrollment_ut)
+add_unittest_directory(provisioning_sc_query_ut)
+add_unittest_directory(provisioning_sc_twin_ut)
+add_unittest_directory(provisioning_sc_twin_int)
+add_unittest_directory(provisioning_service_client_ut)
+add_unittest_directory(prov_sc_bulk_operation_ut)
+add_unittest_directory(prov_sc_dev_caps_ut)
+add_unittest_directory(prov_sc_registration_state_ut)
+add_unittest_directory(prov_sc_shared_helpers_ut)
+add_unittest_directory(prov_sc_tpm_attestation_ut)
+add_unittest_directory(prov_sc_x509_attestation_ut)
