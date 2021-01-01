@@ -1,0 +1,39 @@
+menu "Example Configuration"
+
+config WIFI_SSID
+    string "WiFi SSID"
+	default "myssid"
+	help
+		SSID (network name) for the example to connect to.
+
+config WIFI_PASSWORD
+    string "WiFi Password"
+	default "myssid"
+	help
+		WiFi password (WPA or WPA2) for the example to use.
+
+		Can be left blank if the network has no security set.
+
+config IOTHUB_CONNECTION_STRING
+    string "IOT Hub Device Connection String"
+	default ""
+	help
+		String containing Hostname, Device Id & Device Key in the format:
+		HostName=<host_name>;DeviceId=<device_id>;SharedAccessKey=<device_key>
+		You can get this from the Azure IoT CLI or the Azure Portal.
+
+config MESSAGE_INTERVAL_TIME
+    int "Time delay in Milliseconds between two consecutive messages"
+    default 100
+    help
+        Set time delay between two consecutive message sent to the cloud
+
+config MESSAGE_COUNT
+    int "Total number of messages to be sent to the cloud"
+    default 50
+    help
+        This example will terminate after sending these many
+        messages. If the message count is set as 0 then this example
+        will send indefinite messages to the cloud.
+
+endmenu
