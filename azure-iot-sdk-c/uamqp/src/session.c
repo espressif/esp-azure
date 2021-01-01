@@ -1619,7 +1619,10 @@ SESSION_SEND_TRANSFER_RESULT session_send_transfer(LINK_ENDPOINT_HANDLE link_end
                                             transfer_frame_payload_count++;
                                         }
 
-                                        if (connection_encode_frame(session_instance->endpoint, multi_transfer_amqp_value, transfer_frame_payloads, transfer_frame_payload_count, on_send_complete, callback_context) != 0)
+                                        if (connection_encode_frame(session_instance->endpoint, multi_transfer_amqp_value, transfer_frame_payloads, transfer_frame_payload_count,
+                                            /* only fire the send complete calllback on the last frame of the multi frame transfer */
+                                            more ? NULL : on_send_complete,
+                                            callback_context) != 0)
                                         {
                                             free(transfer_frame_payloads);
                                             amqpvalue_destroy(multi_transfer_amqp_value);

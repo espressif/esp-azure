@@ -945,6 +945,22 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
     }
 }
 
+void mqtt_client_clear_xio(MQTT_CLIENT_HANDLE handle)
+{
+    if (handle != NULL)
+    {
+        MQTT_CLIENT *mqtt_client = (MQTT_CLIENT *)handle;
+
+        // The upstream transport handle allocates and deallocates the xio handle.
+        // The reference to that xio handle is shared between this layer (mqtt layer)
+        // and the upstream layer. The clearing done here is to signal to this layer
+        // that the handle is no longer available to be used. This is different from
+        // deiniting the mqtt client in that we do not want an entire teardown, but
+        // only a possible re-upping of the xio in the future.
+        mqtt_client->xioHandle = NULL;
+    }
+}
+
 MQTT_CLIENT_HANDLE mqtt_client_init(ON_MQTT_MESSAGE_RECV_CALLBACK msgRecv, ON_MQTT_OPERATION_CALLBACK operation_cb, void* opCallbackCtx, ON_MQTT_ERROR_CALLBACK onErrorCallBack, void* errorCBCtx)
 {
     MQTT_CLIENT* result;

@@ -798,7 +798,7 @@ static HTTPAPI_RESULT ReceiveResponseHeaders(HINTERNET requestHandle, HTTP_HEADE
     }
     else    
     {
-        wchar_t *next_token;
+        wchar_t *next_token = NULL;
         wchar_t* token = wcstok_s(responseHeadersTemp, L"\r\n", &next_token);
         char* tokenTemp = NULL;     
 

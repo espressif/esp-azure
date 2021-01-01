@@ -80,8 +80,6 @@ TSS_DispatchCmd(
                                     //     On output contains complete command and response buffers
 );
 
-static TSS_CMD_CONTEXT  CmdCtx;
-
 #define BEGIN_CMD()  \
     TPM_RC           cmdResult = TPM_RC_SUCCESS;                            \
     TSS_CMD_CONTEXT *cmdCtx = &CmdCtx;                                      \
@@ -399,6 +397,7 @@ TPM_RC TPM2_HMAC(
     TPM2B_DIGEST           *outHMAC             // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
     TPM_RC result;
     if (tpm == NULL || session == NULL || buffer == NULL || outHMAC == NULL)
     {
@@ -502,6 +501,8 @@ TPM2_SequenceComplete(
     TPMT_TK_HASHCHECK      *validation          // OUT [opt]
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_MAX_BUFFER, buffer);
     TSS_MARSHAL(TPMI_RH_HIERARCHY, &hierarchy);
@@ -519,6 +520,8 @@ TPM2_SequenceUpdate(
     TPM2B_MAX_BUFFER       *buffer              // IN
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_MAX_BUFFER, buffer);
     DISPATCH_CMD(SequenceUpdate, &sequenceHandle, 1, &session, 1);
@@ -536,6 +539,8 @@ TPM2_Sign(
     TPMT_SIGNATURE         *signature           // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_DIGEST, digest);
     TSS_MARSHAL(TPMT_SIG_SCHEME, inScheme ? inScheme : &NullSigScheme);
@@ -739,6 +744,8 @@ TPM2_ActivateCredential(
     sessions[0] = activateSess;
     sessions[1] = keySess;
 
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL(TPM2B_ID_OBJECT, credentialBlob);
     TSS_MARSHAL(TPM2B_ENCRYPTED_SECRET, secret);
@@ -763,6 +770,8 @@ TPM2_Create(
     TPMT_TK_CREATION         *creationTicket    // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL(TPM2B_SENSITIVE_CREATE, inSensitive);
     TSS_MARSHAL(TPM2B_PUBLIC, inPublic);
@@ -793,6 +802,8 @@ TPM2_CreatePrimary(
     TPMT_TK_CREATION         *creationTicket    // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL(TPM2B_SENSITIVE_CREATE, inSensitive);
     TSS_MARSHAL(TPM2B_PUBLIC, inPublic);
@@ -820,6 +831,8 @@ TPM2_EncryptDecrypt(
     TPM2B_IV               *ivOut               // OUT [opt]
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL(TPMI_YES_NO, &decrypt);
     TSS_MARSHAL(TPM_ALG_ID, &cipherMode);
@@ -840,6 +853,7 @@ TPM2_EvictControl(
     TPMI_DH_PERSISTENT    persistentHandle      // IN
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
     TPM_HANDLE handles[2];// = { auth , objectHandle};
     handles[0] = auth;
     handles[1] = objectHandle;
@@ -856,6 +870,8 @@ TPM2_FlushContext(
     TPMI_DH_CONTEXT         flushHandle         // IN
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     DISPATCH_CMD(FlushContext, &flushHandle, 1, NULL, 0);
     END_CMD();
@@ -871,6 +887,8 @@ TPM2_GetCapability(
     TPMS_CAPABILITY_DATA   *capabilityData      // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL(TPM_CAP, &capability);
     TSS_MARSHAL(UINT32, &property);
@@ -891,6 +909,8 @@ TPM2_Hash(
     TPMT_TK_HASHCHECK      *validation          // OUT [opt]
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_MAX_BUFFER, data);
     TSS_MARSHAL(TPMI_ALG_HASH, &hashAlg);
@@ -909,6 +929,8 @@ TPM2_HashSequenceStart(
     TPMI_DH_OBJECT         *sequenceHandle      // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+    
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_AUTH, auth);
     TSS_MARSHAL(TPMI_ALG_HASH, &hashAlg);
@@ -927,6 +949,8 @@ TPM2_HMAC_Start(
     TPMI_DH_OBJECT         *sequenceHandle      // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_AUTH, auth);
     TSS_MARSHAL(TPMI_ALG_HASH, &hashAlg);
@@ -948,6 +972,8 @@ TPM2_Import(
     TPM2B_PRIVATE          *outPrivate          // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_DATA, encryptionKey);
     TSS_MARSHAL(TPM2B_PUBLIC, objectPublic);
@@ -970,6 +996,8 @@ TPM2_Load(
     TPM2B_NAME             *name                // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+
     BEGIN_CMD();
     TSS_MARSHAL_OPT2B(TPM2B_PRIVATE, inPrivate);
     TSS_MARSHAL(TPM2B_PUBLIC, inPublic);
@@ -993,6 +1021,7 @@ TPM2_PolicySecret(
     TPMT_TK_AUTH           *policyTicket        // OUT [opt]
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
     TPM_HANDLE  handles[2];// = { authHandle, policySession };
     handles[0] = authHandle;
     handles[1] = policySession;
@@ -1024,6 +1053,8 @@ TPM2_ReadPublic(
     }
     else
     {
+        TSS_CMD_CONTEXT  CmdCtx;
+
         BEGIN_CMD();
         DISPATCH_CMD(ReadPublic, &objectHandle, 1, NULL, 0);
         TSS_UNMARSHAL_FLAGGED(TPM2B_PUBLIC, outPublic);
@@ -1589,6 +1620,7 @@ TPM2_StartAuthSession(
     TPM2B_NONCE            *nonceTPM            // OUT
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
     TPM_HANDLE handles[2];
     handles[0] = tpmKey;
     handles[1] = bind;
@@ -1611,6 +1643,8 @@ TPM2_Startup(
     TPM_SU          startupType         // IN
 )
 {
+    TSS_CMD_CONTEXT  CmdCtx;
+    
     BEGIN_CMD();
     TSS_MARSHAL(TPM_SU, &startupType);
     DISPATCH_CMD(Startup, NULL, 0, NULL, 0);

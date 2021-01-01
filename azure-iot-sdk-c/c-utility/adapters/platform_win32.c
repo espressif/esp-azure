@@ -20,6 +20,9 @@
 #if USE_WOLFSSL
 #include "azure_c_shared_utility/tlsio_wolfssl.h"
 #endif
+#if USE_MBEDTLS
+#include "azure_c_shared_utility/tlsio_mbedtls.h"
+#endif
 #if USE_BEARSSL
 #include "azure_c_shared_utility/tlsio_bearssl.h"
 #endif
@@ -67,6 +70,8 @@ const IO_INTERFACE_DESCRIPTION* platform_get_default_tlsio(void)
     return tlsio_wolfssl_get_interface_description();
 #elif USE_BEARSSL
     return tlsio_bearssl_get_interface_description();
+#elif USE_MBEDTLS
+    return tlsio_mbedtls_get_interface_description();
 #else
     return tlsio_schannel_get_interface_description();
 #endif

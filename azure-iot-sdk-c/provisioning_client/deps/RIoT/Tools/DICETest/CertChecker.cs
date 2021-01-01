@@ -5,10 +5,12 @@
 namespace DICETest
 {
     using System;
+    using System.Linq;
     using System.IO;
     using Org.BouncyCastle.Asn1;
     using Org.BouncyCastle.Asn1.Nist;
     using Org.BouncyCastle.Asn1.X509;
+    using Org.BouncyCastle.Math;
     using Org.BouncyCastle.Pkcs;
     using Org.BouncyCastle.X509;
     using Org.BouncyCastle.X509.Extension;
@@ -199,6 +201,7 @@ namespace DICETest
         internal bool CheckSubjectIssuerLinkage()
         {
             bool ok = true;
+            Notify($"Checking Subject/Issuer Linkage");
             foreach (var c in Certs)
             {
                 Notify($"    {c.SubjectDN.ToString()}");
@@ -217,6 +220,10 @@ namespace DICETest
                     ok = false;
                 }
             }
+            if(ok)
+            {
+                NotifySuccess("OK");
+            }
             return ok;
         }
 
@@ -226,6 +233,8 @@ namespace DICETest
         /// <returns>Chain signing linkage is OK</returns>
         internal bool CheckSigningLinkage()
         {
+            Notify($"Checking signature chains");
+
             bool ok = true;
             // alias to cert-before-root should be signed by parent
             for (int j = 0; j < NumCerts - 1; j++)
@@ -239,7 +248,7 @@ namespace DICETest
                 }
                 catch(Exception e)
                 {
-                    Error($"Cert {target.SubjectDN.ToString()} is not properly signed by {signer.SubjectDN.ToString()}.  Error is {e.ToString()}");
+                    Error($"    Cert {target.SubjectDN.ToString()} is not properly signed by {signer.SubjectDN.ToString()}.  Error is {e.ToString()}");
                     ok = false;
                 }
             }
@@ -250,10 +259,14 @@ namespace DICETest
             {
                 root.Verify(rootPubKey);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Error($"Root cert is not properly self-signed.  Error is {e.ToString()}");
+                Error($"Root cert is not properly self-signed.");
                 ok = false;
+            }
+            if(ok)
+            {
+                NotifySuccess("OK");
             }
             return ok;
         }
@@ -447,7 +460,12 @@ namespace DICETest
             try
             {
                 var keyUsage= c.GetKeyUsage();
-                if(keyUsage.Length>9)
+                if(keyUsage==null)
+                {
+                    Error($"KeyUsage is missing.");
+                    return false;
+                }
+                if (keyUsage.Length>9)
                 {
                     Error($"Unsupported KeyUsage.  This usually means that DecipherOnly is asserted, which is an error");
                     return false;
@@ -550,13 +568,21 @@ namespace DICETest
         /// <returns></returns>
         bool CheckSerialNumber(X509Certificate c)
         {
-            var sn = c.SerialNumber;
-            int snNumBytes = sn.ToByteArray().Length;
+            BigInteger sn = c.SerialNumber;
+            var snBytes = sn.ToByteArray();
+            int snNumBytes = snBytes.Length;
             if(snNumBytes<serialNumMinBytes)
             {
                 Error($"Serial number is only {snNumBytes} bytes, but {serialNumMinBytes} is recommended");
                 return false;
             }
+            int numZeroBytes = snBytes.Count(x => x == 0);
+            if (numZeroBytes>=3)
+            {
+                Warning($"Serial number has {numZeroBytes} zeros.  Is it random?");
+                return false;
+            }
+
             return true;
         }
 
