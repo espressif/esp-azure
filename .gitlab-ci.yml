@@ -60,10 +60,11 @@ build_esp8266_demo:
     - chmod 600 ~/.ssh/id_rsa
     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     - git --version
-    - git clone --recursive --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
+    - git clone -b v3.3 --recursive --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
     - cd ESP8266_RTOS_SDK
     - source tools/ci/configure_ci_environment.sh
     - cd ..
+    - git submodule update --init --recursive
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
     - cd examples/iothub_client_sample_mqtt
     - make defconfig
