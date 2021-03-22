@@ -1,0 +1,36 @@
+menu "Example Configuration"
+
+config WIFI_SSID
+    string "WiFi SSID"
+	default "myssid"
+	help
+		SSID (network name) for the example to connect to.
+
+config WIFI_PASSWORD
+    string "WiFi Password"
+	default "myssid"
+	help
+		WiFi password (WPA or WPA2) for the example to use.
+
+		Can be left blank if the network has no security set.
+
+config SYMM_KEY
+         string "Symmetric key"
+    	 default "key"
+    	 help
+		Symmetric key, which will be used for the device
+
+config REGISTRATION_ID
+         string "Device registration ID"
+    	 default "reg-id"
+    	 help
+		Device registration ID to be used for registration through Device Provisioning Service
+
+config DPS_ID_SCOPE
+    string "ID Scope of Device provisioning service"
+    default "myidscope"
+    help
+        This is the unique ID scope of Device Provisioning Service (DPS), and can be found under "Overview"
+        section of your DPS on azure IoT portal
+
+endmenu

@@ -112,7 +112,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/c-utility/src/azure_base32.c"
 	)
 
-if (CONFIG_DEVICE_COMMON_NAME)
+if (CONFIG_DEVICE_COMMON_NAME OR CONFIG_SYMM_KEY)
 	list (APPEND COMPONENT_SRCS "${AZURE_IOT_SDK}/provisioning_client/src/iothub_auth_client.c")
 endif()
 
@@ -134,11 +134,14 @@ component_compile_options (
 	)
 
 component_compile_definitions (
-    USE_LWIP_SOCKET_FOR_AZURE_IOT
-	HSM_TYPE_X509
+	USE_LWIP_SOCKET_FOR_AZURE_IOT
 	HSM_TYPE_SAS_TOKEN
 )
 
 if (CONFIG_DEVICE_COMMON_NAME)
-	add_definitions(-DUSE_PROV_MODULE)
+	add_definitions(-DUSE_PROV_MODULE -DHSM_TYPE_X509)
+endif()
+
+if (CONFIG_SYMM_KEY)
+	add_definitions(-DUSE_PROV_MODULE -DHSM_TYPE_SYMM_KEY)
 endif()
