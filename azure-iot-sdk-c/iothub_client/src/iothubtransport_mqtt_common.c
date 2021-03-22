@@ -91,7 +91,7 @@ static const char* CONNECTION_MODULE_ID_PROPERTY = "cmid";
 
 static const char* DIAGNOSTIC_CONTEXT_CREATION_TIME_UTC_PROPERTY = "creationtimeutc";
 
-static const char DT_MODEL_ID_TOKEN[] = "digital-twin-model-id";
+static const char DT_MODEL_ID_TOKEN[] = "model-id";
 
 static const char DEFAULT_IOTHUB_PRODUCT_IDENTIFIER[] = CLIENT_DEVICE_TYPE_PREFIX "/" IOTHUB_SDK_VERSION;
 
@@ -297,6 +297,7 @@ static void free_proxy_data(MQTTTRANSPORT_HANDLE_DATA* mqtt_transport_instance)
 // Destroys xio transport associated with MQTT handle and resets appropriate state
 static void DestroyXioTransport(PMQTTTRANSPORT_HANDLE_DATA transport_data)
 {
+    mqtt_client_clear_xio(transport_data->mqttClient);
     xio_destroy(transport_data->xioTransport);
     transport_data->xioTransport = NULL;
 }
@@ -315,6 +316,7 @@ static void free_transport_handle_data(MQTTTRANSPORT_HANDLE_DATA* transport_data
     if (transport_data->mqttClient != NULL)
     {
         mqtt_client_deinit(transport_data->mqttClient);
+        transport_data->mqttClient = NULL;
     }
 
     if (transport_data->retry_control_handle != NULL)
@@ -1190,15 +1192,17 @@ static int subscribeToNotifyStateIfNeeded(PMQTTTRANSPORT_HANDLE_DATA transport_d
     return result;
 }
 
-
 static bool isSystemProperty(const char* tokenData)
 {
     bool result = false;
     size_t propCount = sizeof(sysPropList) / sizeof(sysPropList[0]);
     size_t index = 0;
+    size_t tokenDataLength = strlen(tokenData);
+
     for (index = 0; index < propCount; index++)
     {
-        if (memcmp(tokenData, sysPropList[index].propName, sysPropList[index].propLength) == 0)
+        if (tokenDataLength >= sysPropList[index].propLength &&
+            memcmp(tokenData, sysPropList[index].propName, sysPropList[index].propLength) == 0)
         {
             result = true;
             break;
@@ -3220,7 +3224,10 @@ void IoTHubTransport_MQTT_Common_DoWork(TRANSPORT_LL_HANDLE handle)
                     currentListEntry = savedFromCurrentListEntry.Flink;
                 }
 
-                sendPendingGetTwinRequests(transport_data);
+                if (transport_data->twin_resp_sub_recv)
+                {
+                    sendPendingGetTwinRequests(transport_data);
+                }
             }
             /* Codes_SRS_IOTHUB_MQTT_TRANSPORT_07_030: [IoTHubTransport_MQTT_Common_DoWork shall call mqtt_client_dowork everytime it is called if it is connected.] */
             mqtt_client_dowork(transport_data->mqttClient);
