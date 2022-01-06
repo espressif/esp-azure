@@ -33,12 +33,15 @@ static void obtain_time(void)
     struct tm timeinfo = { 0 };
     int retry = 0;
 
+    printf("Waiting for system time to be set...\r\n");
     while(timeinfo.tm_year < (2016 - 1900) ) {
-        printf("Waiting for system time to be set... tm_year:%d[times:%d]\n", timeinfo.tm_year, ++retry);
+        retry++;
+//        printf("Waiting for system time to be set... tm_year:%d[times:%d]\n", timeinfo.tm_year, ++retry);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
     }
+    printf("system time is set\r\n");
 }
 
 time_t sntp_get_current_timestamp()
