@@ -1,7 +1,7 @@
 #
 # Component Makefile
 #
- 
+
 # Component configuration in preprocessor defines
 CFLAGS += -DUSE_LWIP_SOCKET_FOR_AZURE_IOT
 
@@ -27,7 +27,7 @@ azure-iot-sdk-c/c-utility/pal/generic \
 ifndef CONFIG_TARGET_PLATFORM_ESP8266
 COMPONENT_ADD_INCLUDEDIRS += azure-iot-sdk-c/certs
 endif
- 
+
 COMPONENT_OBJS = \
 azure-iot-sdk-c/c-utility/pal/freertos/lock.o \
 azure-iot-sdk-c/c-utility/pal/socket_async.o \
@@ -38,6 +38,7 @@ azure-iot-sdk-c/c-utility/pal/tlsio_options.o \
 port/src/agenttime_esp.o \
 port/src/platform_esp.o \
 port/src/tlsio_esp_tls.o \
+port/src/wsio_esp.o \
 \
 azure-iot-sdk-c/c-utility/src/xlogging.o \
 azure-iot-sdk-c/c-utility/src/singlylinkedlist.o \
@@ -48,6 +49,7 @@ azure-iot-sdk-c/c-utility/src/constmap.o \
 azure-iot-sdk-c/c-utility/src/crt_abstractions.o \
 azure-iot-sdk-c/c-utility/src/doublylinkedlist.o \
 azure-iot-sdk-c/c-utility/src/gballoc.o \
+azure-iot-sdk-c/c-utility/src/gb_rand.o \
 azure-iot-sdk-c/c-utility/src/gb_stdio.o \
 azure-iot-sdk-c/c-utility/src/gb_time.o \
 azure-iot-sdk-c/c-utility/src/hmac.o \
@@ -65,7 +67,11 @@ azure-iot-sdk-c/c-utility/src/strings.o \
 azure-iot-sdk-c/c-utility/src/string_tokenizer.o \
 azure-iot-sdk-c/c-utility/src/urlencode.o \
 azure-iot-sdk-c/c-utility/src/usha.o \
+azure-iot-sdk-c/c-utility/src/utf8_checker.o \
+azure-iot-sdk-c/c-utility/src/uws_client.o \
+azure-iot-sdk-c/c-utility/src/uws_frame_encoder.o \
 azure-iot-sdk-c/c-utility/src/vector.o \
+azure-iot-sdk-c/c-utility/src/wsio.o \
 azure-iot-sdk-c/c-utility/src/xio.o \
 azure-iot-sdk-c/c-utility/src/azure_base64.o \
 \
@@ -80,6 +86,7 @@ azure-iot-sdk-c/iothub_client/src/iothub_client_diagnostic.o \
 azure-iot-sdk-c/iothub_client/src/iothub_message.o \
 azure-iot-sdk-c/iothub_client/src/iothubtransport.o \
 azure-iot-sdk-c/iothub_client/src/iothubtransportmqtt.o \
+azure-iot-sdk-c/iothub_client/src/iothubtransportmqtt_websockets.o \
 azure-iot-sdk-c/iothub_client/src/iothubtransport_mqtt_common.o \
 azure-iot-sdk-c/iothub_client/src/iothub_transport_ll_private.o \
 azure-iot-sdk-c/iothub_client/src/version.o \

@@ -2,7 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 // This component was written to conform to the tlsio_requirements.md specification located
-// in the Azure IoT C Utility: 
+// in the Azure IoT C Utility:
 // https://github.com/Azure/azure-c-shared-utility/blob/master/devdoc/tlsio_requirements.md
 // Comments throughout this code refer to requirements in that spec.
 
@@ -19,6 +19,7 @@
 #include "azure_c_shared_utility/singlylinkedlist.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/tlsio_options.h"
+#include "azure_c_shared_utility/shared_util_options.h"
 
 #include "esp_tls.h"
 
@@ -94,7 +95,7 @@ static bool process_and_destroy_head_message(TLS_IO_INSTANCE* tls_io_instance, I
     if (head_pending_io != NULL)
     {
         PENDING_TRANSMISSION* head_message = (PENDING_TRANSMISSION*)singlylinkedlist_item_get_value(head_pending_io);
-        // Must remove the item from the list before calling the callback because 
+        // Must remove the item from the list before calling the callback because
         // SRS_TLSIO_30_091: [ If  tlsio_esp_tls_dowork  is able to send all the bytes in an enqueued message, it shall first dequeue the message then call the messages's  on_send_complete  along with its associated  callback_context  and  IO_SEND_OK . ]
         if (singlylinkedlist_remove(tls_io_instance->pending_transmission_list, head_pending_io) != 0)
         {
@@ -158,7 +159,7 @@ static void tlsio_esp_tls_destroy(CONCRETE_IO_HANDLE tls_io)
         {
             free(tls_io_instance->hostname);
         }
-        
+
         tlsio_options_release_resources(&tls_io_instance->options);
 
         if (tls_io_instance->pending_transmission_list != NULL)
@@ -407,14 +408,14 @@ static int dowork_read(TLS_IO_INSTANCE* tls_io_instance)
             // in the call to tlsio_esp_tls_open_async
             /* Codes_SRS_TLSIO_30_100: [ As long as the TLS connection is able to provide received data, tlsio_dowork shall repeatedly read this data and call on_bytes_received with the pointer to the buffer containing the data, the number of bytes received, and the on_bytes_received_context. ]*/
             tls_io_instance->on_bytes_received(tls_io_instance->on_bytes_received_context, buffer, rcv_bytes);
-            
+
             if (++rcv_count > MAX_RCV_COUNT)
             {
                 // Read no more than "MAX_RCV_COUNT" times to avoid starvation of other processes.
                 // LogInfo("Skipping further reading to avoid starvation.");
                 break;
             }
-            
+
             rcv_bytes = esp_tls_conn_read(tls_io_instance->esp_tls_handle, buffer, sizeof(buffer));
         }
         /* Codes_SRS_TLSIO_30_102: [ If the TLS connection receives no data then tlsio_dowork shall not call the on_bytes_received callback. ]*/
@@ -617,18 +618,30 @@ static int tlsio_esp_tls_setoption(CONCRETE_IO_HANDLE tls_io, const char* option
     }
     else
     {
-        /* Codes_SRS_TLSIO_30_121: [ If the optionName parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
-        TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
-        if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+        if (strcmp(optionName, OPTION_SET_TLS_RENEGOTIATION) == 0)
         {
-            LogError("Failed tlsio_options_set");
+#ifdef CONFIG_MBEDTLS_SSL_RENEGOTIATION
+            result = 0;
+#else
+            LogError("Failed tlsio_options_set, TLS renegotiation not configured");
             result = MU_FAILURE;
+#endif
         }
         else
         {
-            result = 0;
+            /* Codes_SRS_TLSIO_30_121: [ If the optionName parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
+            /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
+            /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
+            TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
+            if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+            {
+                LogError("Failed tlsio_options_set");
+                result = MU_FAILURE;
+            }
+            else
+            {
+                result = 0;
+            }
         }
     }
     return result;
