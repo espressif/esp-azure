@@ -46,6 +46,25 @@ $ git clone --recursive https://github.com/espressif/esp-azure.git
 ```
 
 > Note that if you ever change the branch or the git head of either esp-idf or esp-azure, ensure that all the submodules of the git repo are in sync by executing `git submodule update --init --recursive`
+- Add path to components in your project CMakeLists
+```CMake
+set(EXTRA_COMPONENT_DIRS ${EXTRA_COMPONENT_DIRS} <other-folder-of-clone>/esp-azure/port)
+```
+
+or use CMake [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html) to add the components to your project. Modify your project level CMakeLists.txt to look similar to:
+
+ ```CMake
+ cmake_minimum_required(VERSION 3.11)
+ include(FetchContent)
+ FetchContent_Declare(
+   espazure
+   GIT_REPOSITORY https://github.com/espressif/esp-azure.git
+ )
+ FetchContent_MakeAvailable(espazure)
+ set(EXTRA_COMPONENT_DIRS ${EXTRA_COMPONENT_DIRS} ${espazure_SOURCE_DIR}/components)
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ project(my-esp-project)
+ ```
 
 ##
 
