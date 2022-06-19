@@ -43,9 +43,16 @@ MU_DEFINE_ENUM(MQTT_CLIENT_EVENT_RESULT, MQTT_CLIENT_EVENT_VALUES);
 
 MU_DEFINE_ENUM(MQTT_CLIENT_EVENT_ERROR, MQTT_CLIENT_EVENT_ERROR_VALUES);
 
+#define MQTT_CLIENT_ACK_OPTION_VALUES     \
+    MQTT_CLIENT_ACK_SYNC,                 \
+    MQTT_CLIENT_ACK_ASYNC,                \
+    MQTT_CLIENT_ACK_NONE
+
+MU_DEFINE_ENUM(MQTT_CLIENT_ACK_OPTION, MQTT_CLIENT_ACK_OPTION_VALUES);
+
 typedef void(*ON_MQTT_OPERATION_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_RESULT actionResult, const void* msgInfo, void* callbackCtx);
 typedef void(*ON_MQTT_ERROR_CALLBACK)(MQTT_CLIENT_HANDLE handle, MQTT_CLIENT_EVENT_ERROR error, void* callbackCtx);
-typedef void(*ON_MQTT_MESSAGE_RECV_CALLBACK)(MQTT_MESSAGE_HANDLE msgHandle, void* callbackCtx);
+typedef MQTT_CLIENT_ACK_OPTION(*ON_MQTT_MESSAGE_RECV_CALLBACK)(MQTT_MESSAGE_HANDLE msgHandle, void* callbackCtx);
 typedef void(*ON_MQTT_DISCONNECTED_CALLBACK)(void* callbackCtx);
 
 MOCKABLE_FUNCTION(, void, mqtt_client_clear_xio, MQTT_CLIENT_HANDLE, handle);
@@ -57,6 +64,8 @@ MOCKABLE_FUNCTION(, int, mqtt_client_disconnect, MQTT_CLIENT_HANDLE, handle, ON_
 
 MOCKABLE_FUNCTION(, int, mqtt_client_subscribe, MQTT_CLIENT_HANDLE, handle, uint16_t, packetId, SUBSCRIBE_PAYLOAD*, subscribeList, size_t, count);
 MOCKABLE_FUNCTION(, int, mqtt_client_unsubscribe, MQTT_CLIENT_HANDLE, handle, uint16_t, packetId, const char**, unsubscribeList, size_t, count);
+
+MOCKABLE_FUNCTION(, int, mqtt_client_send_message_response, MQTT_CLIENT_HANDLE, handle, uint16_t, packetId, QOS_VALUE, qosValue);
 
 MOCKABLE_FUNCTION(, int, mqtt_client_publish, MQTT_CLIENT_HANDLE, handle, MQTT_MESSAGE_HANDLE, msgHandle);
 

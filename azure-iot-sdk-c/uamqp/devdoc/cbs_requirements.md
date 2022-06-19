@@ -31,8 +31,8 @@ DEFINE_ENUM(CBS_OPEN_COMPLETE_RESULT, CBS_OPEN_COMPLETE_RESULT_VALUES)
     MOCKABLE_FUNCTION(, void, cbs_destroy, CBS_HANDLE, cbs);
     MOCKABLE_FUNCTION(, int, cbs_open_async, CBS_HANDLE, cbs, ON_CBS_OPEN_COMPLETE, on_cbs_open_complete, void*, on_cbs_open_complete_context, ON_CBS_ERROR, on_cbs_error, void*, on_cbs_error_context);
     MOCKABLE_FUNCTION(, int, cbs_close, CBS_HANDLE, cbs);
-    MOCKABLE_FUNCTION(, int, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
-    MOCKABLE_FUNCTION(, int, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
     MOCKABLE_FUNCTION(, int, cbs_set_trace, CBS_HANDLE, cbs, bool, trace_on);
 ```
 
@@ -98,11 +98,12 @@ MOCKABLE_FUNCTION(, int, cbs_close, CBS_HANDLE, cbs);
 ### cbs_put_token_async
 
 ```c
-MOCKABLE_FUNCTION(, int, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
+MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
 ```
 
 **SRS_CBS_01_049: [** `cbs_put_token_async` shall construct a request message for the `put-token` operation. **]**
-**SRS_CBS_01_081: [** On success `cbs_put_token_async` shall return 0. **]**
+**SRS_CBS_01_081: [** On success `cbs_put_token_async` shall return an `ASYNC_OPERATION_HANDLE`. **]**
+**SRS_CBS_09_001: [** The `ASYNC_OPERATION_HANDLE` cancel function shall cancel the underlying amqp management operation, remove this operation from the pending list, destroy this async operation. **]**
 **SRS_CBS_01_050: [** If any of the arguments `cbs`, `type`, `audience`, `token` or `on_cbs_put_token_complete` is NULL `cbs_put_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_083: [** `on_cbs_put_token_complete_context` shall be allowed to be NULL. **]**
 **SRS_CBS_01_051: [** `cbs_put_token_async` shall start the AMQP management operation by calling `amqp_management_execute_operation_async`, while passing to it: **]**
@@ -114,16 +115,17 @@ MOCKABLE_FUNCTION(, int, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type
 **SRS_CBS_01_072: [** If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_084: [** If `amqp_management_execute_operation_async` fails `cbs_put_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_057: [** The arguments `on_execute_operation_complete` and `context` shall be set to a callback that is to be called by the AMQP management module when the operation is complete. **]**
-**SRS_CBS_01_058: [** If `cbs_put_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return a non-zero value. **]**
+**SRS_CBS_01_058: [** If `cbs_put_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return `NULL`. **]**
 
 ### cbs_delete_token_async
 
 ```c
-MOCKABLE_FUNCTION(, int, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
+MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
 ```
 
 **SRS_CBS_01_059: [** `cbs_delete_token_async` shall construct a request message for the `delete-token` operation. **]**
-**SRS_CBS_01_082: [** On success `cbs_delete_token_async` shall return 0. **]**
+**SRS_CBS_01_082: [** On success `cbs_delete_token_async` shall return an `ASYNC_OPERATION_HANDLE`. **]**
+**SRS_CBS_09_001: [** The `ASYNC_OPERATION_HANDLE` cancel function shall cancel the underlying amqp management operation, remove this operation from the pending list, destroy this async operation. **]**
 **SRS_CBS_01_060: [** If any of the arguments `cbs`, `type`, `audience` or `on_cbs_delete_token_complete` is NULL `cbs_put_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_086: [** `on_cbs_delete_token_complete_context` shall be allowed to be NULL. **]**
 **SRS_CBS_01_061: [** `cbs_delete_token_async` shall start the AMQP management operation by calling `amqp_management_execute_operation_async`, while passing to it: **]**
@@ -135,7 +137,7 @@ MOCKABLE_FUNCTION(, int, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, t
 **SRS_CBS_01_071: [** If constructing the message fails, `cbs_delete_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_087: [** If `amqp_management_execute_operation_async` fails `cbs_put_token_async` shall fail and return a non-zero value. **]**
 **SRS_CBS_01_066: [** The arguments `on_execute_operation_complete` and `context` shall be set to a callback that is to be called by the AMQP management module when the operation is complete. **]**
-**SRS_CBS_01_067: [** If `cbs_delete_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return a non-zero value. **]**
+**SRS_CBS_01_067: [** If `cbs_delete_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return `NULL`. **]**
 
 ### cbs_set_trace
 

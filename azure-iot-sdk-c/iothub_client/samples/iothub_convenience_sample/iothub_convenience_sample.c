@@ -2,7 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 /*
-CAUTION: Checking of return codes and error values shall be omitted for brevity in this sample. 
+CAUTION: Checking of return codes and error values shall be omitted for brevity in this sample.
 This sample is to demonstrate azure IoT client concepts only and is not a guide design principles or style.
 Please practice sound engineering practices when writing production code.
 */
@@ -20,17 +20,17 @@ Please practice sound engineering practices when writing production code.
 #include "azure_c_shared_utility/shared_util_options.h"
 #include "azure_c_shared_utility/tickcounter.h"
 
-/* 
-This sample uses the multithreaded APIs of iothub_client for example purposes. 
+/*
+This sample uses the multithreaded APIs of iothub_client for example purposes.
 The difference between multithreaded and singlethreaded (_ll_) API?
-Multithreaded creates a separate thread to perform DoWork calls, which are necessary 
-for the device client library to do anything. The benefit of using the 
-multithreaded API is that the calls to DoWork are abstracted away from your code. 
+Multithreaded creates a separate thread to perform DoWork calls, which are necessary
+for the device client library to do anything. The benefit of using the
+multithreaded API is that the calls to DoWork are abstracted away from your code.
 */
 
 
 // The protocol you wish to use should be uncommented
-// 
+//
 #define SAMPLE_MQTT
 //#define SAMPLE_MQTT_OVER_WEBSOCKETS
 //#define SAMPLE_AMQP
@@ -69,11 +69,27 @@ static int proxy_port = 0;               // Proxy port
 static const char* proxy_username = NULL; // Proxy user name
 static const char* proxy_password = NULL; // Proxy password
 
+// names of optional custom properties that may be specified by the service to C2D messages
+const char* applicationCustomPropertyKey1 = "appCustomProperty1";
+const char* applicationCustomPropertyKey2 = "appCustomProperty2";
+
+// The Azure IoT C SDK allows developers to acknowledge cloud-to-device messages
+// (either sending DISPOSITION if using AMQP, or PUBACK if using MQTT) outside the following callback, in a separate function call.
+// This would allow the user application to process the incoming message before acknowledging it to the Azure IoT Hub, since
+// the callback below is supposed to return as fast as possible to unblock I/O.
+// Please look for "IOTHUBMESSAGE_ASYNC_ACK" in iothub_ll_c2d_sample for more details.
 static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HANDLE message, void* user_context)
 {
     (void)user_context;
     const char* messageId;
     const char* correlationId;
+    const char* contentType;
+    const char* contentEncoding;
+    const char* messageCreationTimeUtc;
+    const char* messageUserId;
+
+    const char* applicationCustomPropertyValue1;
+    const char* applicationCustomPropertyValue2;
 
     // Message properties
     if ((messageId = IoTHubMessage_GetMessageId(message)) == NULL)
@@ -84,6 +100,36 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HAND
     if ((correlationId = IoTHubMessage_GetCorrelationId(message)) == NULL)
     {
         correlationId = "<unavailable>";
+    }
+
+    if ((contentType = IoTHubMessage_GetContentTypeSystemProperty(message)) == NULL)
+    {
+        contentType = "<unavailable>";
+    }
+
+    if ((contentEncoding = IoTHubMessage_GetContentEncodingSystemProperty(message)) == NULL)
+    {
+        contentEncoding = "<unavailable>";
+    }
+
+    if ((messageCreationTimeUtc = IoTHubMessage_GetMessageCreationTimeUtcSystemProperty(message)) == NULL)
+    {
+        messageCreationTimeUtc = "<unavailable>";
+    }
+
+    if ((messageUserId = IoTHubMessage_GetMessageUserIdSystemProperty(message)) == NULL)
+    {
+        messageUserId = "<unavailable>";
+    }
+
+    if ((applicationCustomPropertyValue1 = IoTHubMessage_GetProperty(message, applicationCustomPropertyKey1)) == NULL)
+    {
+        applicationCustomPropertyValue1 = "<unavailable>";
+    }
+
+    if ((applicationCustomPropertyValue2 = IoTHubMessage_GetProperty(message, applicationCustomPropertyKey2)) == NULL)
+    {
+        applicationCustomPropertyValue2 = "<unavailable>";
     }
 
     IOTHUBMESSAGE_CONTENT_TYPE content_type = IoTHubMessage_GetContentType(message);
@@ -98,7 +144,7 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HAND
         }
         else
         {
-            (void)printf("Received Binary message\r\nMessage ID: %s\r\n Correlation ID: %s\r\n Data: <<<%.*s>>> & Size=%d\r\n", messageId, correlationId, (int)buff_len, buff_msg, (int)buff_len);
+            (void)printf("Received Binary message.\r\n  Data: <<<%.*s>>> & Size=%d\r\n", (int)buff_len, buff_msg, (int)buff_len);
         }
     }
     else
@@ -110,9 +156,15 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT receive_msg_callback(IOTHUB_MESSAGE_HAND
         }
         else
         {
-            (void)printf("Received String Message\r\nMessage ID: %s\r\n Correlation ID: %s\r\n Data: <<<%s>>>\r\n", messageId, correlationId, string_msg);
+            (void)printf("Received String Message.\r\n  Data: <<<%s>>>\r\n", string_msg);
         }
     }
+
+    printf("Message properties:\r\n  Message ID: %s\r\n  Correlation ID: %s\r\n  ContentType: %s\r\n  ContentEncoding: %s\r\n"
+           "  messageCreationTimeUtc: %s\r\n  messageUserId: %s\r\n  %s: %s\r\n  %s: %s\r\n",
+           messageId, correlationId, contentType, contentEncoding, messageCreationTimeUtc, messageUserId,
+           applicationCustomPropertyKey1, applicationCustomPropertyValue1 ,applicationCustomPropertyKey2, applicationCustomPropertyValue2);
+
     return IOTHUBMESSAGE_ACCEPTED;
 }
 
@@ -165,7 +217,7 @@ static int device_method_callback(const char* method_name, const unsigned char* 
     {
         memcpy(*response, RESPONSE_STRING, *resp_size);
     }
-    
+
     return status;
 }
 
@@ -251,7 +303,7 @@ int main(void)
             {
                 (void)printf("failure to set proxy\n");
             }
-        }		
+        }
 
         // Setting message callback to get C2D messages
         (void)IoTHubDeviceClient_SetMessageCallback(device_handle, receive_msg_callback, NULL);
@@ -264,7 +316,7 @@ int main(void)
         // Set any option that are necessary.
         // For available options please see the iothub_sdk_options.md documentation
 
-        // Setting Log Tracing. 
+        // Setting Log Tracing.
         // Log tracing is supported in MQTT and AMQP. Not HTTP.
 #ifndef SAMPLE_HTTP
         bool traceOn = true;
@@ -272,9 +324,9 @@ int main(void)
 #endif
 
         // Setting the frequency of DoWork calls by the underlying process thread.
-        // The value ms_delay is a delay between DoWork calls, in milliseconds. 
-        // ms_delay can only be between 1 and 100 milliseconds. 
-        // Without the SetOption, the delay defaults to 1 ms. 
+        // The value ms_delay is a delay between DoWork calls, in milliseconds.
+        // ms_delay can only be between 1 and 100 milliseconds.
+        // Without the SetOption, the delay defaults to 1 ms.
         tickcounter_ms_t ms_delay = 10;
         (void)IoTHubDeviceClient_SetOption(device_handle, OPTION_DO_WORK_FREQUENCY_IN_MS, &ms_delay);
 
@@ -288,17 +340,17 @@ int main(void)
         //Setting the auto URL Encoder (recommended for MQTT). Please use this option unless
         //you are URL Encoding inputs yourself.
         //ONLY valid for use with MQTT
-        //bool urlEncodeOn = true;
-        //(void)IoTHubDeviceClient_SetOption(device_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
+        bool urlEncodeOn = true;
+        (void)IoTHubDeviceClient_SetOption(device_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
 #endif
 
         while(g_continueRunning)
         {
             // Construct the iothub message
-            telemetry_temperature = 20.0f + ((float)rand() / RAND_MAX) * 15.0f;
-            telemetry_humidity = 60.0f + ((float)rand() / RAND_MAX) * 20.0f;
+            telemetry_temperature = 20.0f + ((float)rand() / (float)RAND_MAX) * 15.0f;
+            telemetry_humidity = 60.0f + ((float)rand() / (float)RAND_MAX) * 20.0f;
 
-            sprintf(telemetry_msg_buffer, "{\"temperature\":%.3f,\"humidity\":%.3f,\"scale\":\"%s\"}", 
+            sprintf(telemetry_msg_buffer, "{\"temperature\":%.3f,\"humidity\":%.3f,\"scale\":\"%s\"}",
                 telemetry_temperature, telemetry_humidity, telemetry_scale);
 
             message_handle = IoTHubMessage_CreateFromString(telemetry_msg_buffer);

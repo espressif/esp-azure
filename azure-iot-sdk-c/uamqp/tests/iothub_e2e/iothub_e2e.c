@@ -168,6 +168,7 @@ TEST_FUNCTION(send_1_message_to_iothub_unsettled_auth_with_cbs)
 {
     // arrange
     int result;
+    ASYNC_OPERATION_HANDLE async_operation;
     CONNECTION_HANDLE client_connection;
     SESSION_HANDLE client_session;
     LINK_HANDLE client_link;
@@ -220,9 +221,13 @@ TEST_FUNCTION(send_1_message_to_iothub_unsettled_auth_with_cbs)
     client_session = session_create(client_connection, NULL, NULL);
     ASSERT_IS_NOT_NULL(client_session, "Could not create client session");
 
+    const char* eh_testdevice_device_key;
+    eh_testdevice_device_key = getenv("UAMQP_E2E_DEVICE_KEY");
+    ASSERT_IS_NOT_NULL(eh_testdevice_device_key, "Could not get eh_testdevice device key");
+
     key_string = STRING_new();
     ASSERT_IS_NOT_NULL(key_string, "Could not create key_string");
-    result = STRING_concat(key_string, "LueeXZDJxzDoL6EoNv6Mi1hccyj2zZrmjHc1lUXeJT4=");
+    result = STRING_concat(key_string, eh_testdevice_device_key);
     ASSERT_ARE_EQUAL(int, 0, result, "Could not create key_string");
     scope_string = STRING_new();
     ASSERT_IS_NOT_NULL(scope_string, "Could not create scope string");
@@ -242,8 +247,8 @@ TEST_FUNCTION(send_1_message_to_iothub_unsettled_auth_with_cbs)
 
     auth = false;
 
-    result = cbs_put_token_async(cbs, "servicebus.windows.net:sastoken", STRING_c_str(scope_string), STRING_c_str(sas_token), on_cbs_put_token_complete, cbs);
-    ASSERT_ARE_EQUAL(int, 0, result, "cannot put cbs token");
+    async_operation = cbs_put_token_async(cbs, "servicebus.windows.net:sastoken", STRING_c_str(scope_string), STRING_c_str(sas_token), on_cbs_put_token_complete, cbs);
+    ASSERT_ARE_NOT_EQUAL(void_ptr, NULL, async_operation, "cannot put cbs token");
 
     start_time = time(NULL);
     while ((now_time = time(NULL)),

@@ -90,6 +90,9 @@ void LogBinary(const char* comment, const void* data, size_t size)
     {
         /* Close the charBuf string. */
         charBuf[countbuf] = '\0';
+        hexBuf[countbuf * 3] = ' ';
+        hexBuf[countbuf * 3 + 1] = ' ';
+        hexBuf[countbuf * 3 + 2] = ' ';
 
         /* Fill the hexBuf with spaces to keep the charBuf alignment. */
         while ((countbuf++) < LINE_SIZE - 1)

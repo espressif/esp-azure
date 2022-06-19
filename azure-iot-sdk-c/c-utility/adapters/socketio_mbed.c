@@ -189,7 +189,10 @@ void socketio_destroy(CONCRETE_IO_HANDLE socket_io)
     {
         SOCKET_IO_INSTANCE* socket_io_instance = (SOCKET_IO_INSTANCE*)socket_io;
 
-        tcpsocketconnection_destroy(socket_io_instance->tcp_socket_connection);
+        if (socket_io_instance->tcp_socket_connection != NULL)
+        {
+            tcpsocketconnection_destroy(socket_io_instance->tcp_socket_connection);
+        }
 
         /* clear all pending IOs */
         LIST_ITEM_HANDLE first_pending_io = singlylinkedlist_get_head_item(socket_io_instance->pending_io_list);
@@ -223,6 +226,12 @@ int socketio_open(CONCRETE_IO_HANDLE socket_io, ON_IO_OPEN_COMPLETE on_io_open_c
     }
     else
     {
+        if (socket_io_instance->tcp_socket_connection != NULL)
+        {
+            tcpsocketconnection_close(socket_io_instance->tcp_socket_connection);
+            tcpsocketconnection_destroy(socket_io_instance->tcp_socket_connection);
+        }
+
         socket_io_instance->tcp_socket_connection = tcpsocketconnection_create();
         if (socket_io_instance->tcp_socket_connection == NULL)
         {
@@ -281,7 +290,6 @@ int socketio_close(CONCRETE_IO_HANDLE socket_io, ON_IO_CLOSE_COMPLETE on_io_clos
         else
         {
             tcpsocketconnection_close(socket_io_instance->tcp_socket_connection);
-            socket_io_instance->tcp_socket_connection = NULL;
             socket_io_instance->io_state = IO_STATE_CLOSED;
 
             if (on_io_close_complete != NULL)
@@ -331,7 +339,7 @@ int socketio_send(CONCRETE_IO_HANDLE socket_io, const void* buffer, size_t size,
             else
             {
                 int send_result = tcpsocketconnection_send(socket_io_instance->tcp_socket_connection, buffer, size);
-                if (send_result != size)
+                if ((size_t)send_result != size)
                 {
                     if (send_result < 0)
                     {
@@ -385,7 +393,7 @@ void socketio_dowork(CONCRETE_IO_HANDLE socket_io)
                 }
 
                 int send_result = tcpsocketconnection_send(socket_io_instance->tcp_socket_connection, (const char*)pending_socket_io->bytes, pending_socket_io->size);
-                if (send_result != pending_socket_io->size)
+                if ((size_t)send_result != pending_socket_io->size)
                 {
                     if (send_result < 0)
                     {
@@ -451,6 +459,9 @@ void socketio_dowork(CONCRETE_IO_HANDLE socket_io)
 int socketio_setoption(CONCRETE_IO_HANDLE socket_io, const char* optionName, const void* value)
 {
     /* Not implementing any options */
+    (void)socket_io;
+    (void)optionName;
+    (void)value;
     return MU_FAILURE;
 }
 

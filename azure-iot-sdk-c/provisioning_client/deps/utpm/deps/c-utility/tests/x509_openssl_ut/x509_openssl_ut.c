@@ -34,6 +34,7 @@ static void my_gballoc_free(void* s)
 #include "openssl/bio.h"
 #include "openssl/rsa.h"
 #include "openssl/evp.h"
+#include "openssl/engine.h"
 
 #include "azure_c_shared_utility/x509_openssl.h"
 #include "umock_c/umocktypes_charptr.h"
@@ -115,6 +116,11 @@ MOCKABLE_FUNCTION(, int, SSL_CTX_use_PrivateKey, SSL_CTX*, ctx, EVP_PKEY*, pkey)
 MOCKABLE_FUNCTION(, long, SSL_CTX_ctrl, SSL_CTX*, ctx, int, cmd, long, larg, void*, parg);
 MOCKABLE_FUNCTION(, unsigned long, ERR_peek_last_error);
 MOCKABLE_FUNCTION(, void, ERR_clear_error);
+
+MOCKABLE_FUNCTION(, int, ENGINE_init, ENGINE*, e);
+MOCKABLE_FUNCTION(, int, ENGINE_set_default, ENGINE*, e, unsigned int, flags);
+MOCKABLE_FUNCTION(, EVP_PKEY*, ENGINE_load_private_key, ENGINE*, e, const char*, key_id, UI_METHOD*, ui_method, void*, callback_data);
+MOCKABLE_FUNCTION(, int, ENGINE_finish, ENGINE*, e);
 
 #ifndef __APPLE__
 MOCKABLE_FUNCTION(, int, EVP_PKEY_id, const EVP_PKEY*, pkey);
@@ -216,6 +222,8 @@ typedef struct replace_evp_pkey_st_tag
 #define TEST_X509_STORE (X509_STORE *)"le store"
 #define TEST_BIO_METHOD (BIO_METHOD*)"le method"
 #define TEST_BIO (BIO*)"le bio"
+#define TEST_ENGINE (ENGINE*)"the engine"
+#define TEST_KEY_ID "the key id"
 
 static const char* TEST_PUBLIC_CERTIFICATE = "PUBLIC CERTIFICATE";
 static const char* TEST_PRIVATE_CERTIFICATE = "PRIVATE KEY";
@@ -276,6 +284,11 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         REGISTER_GLOBAL_MOCK_HOOK(PEM_read_bio_X509_AUX, my_PEM_read_bio_X509_AUX);
         REGISTER_GLOBAL_MOCK_RETURNS(SSL_CTX_use_PrivateKey, 1, 0);
         REGISTER_GLOBAL_MOCK_HOOK(SSL_CTX_ctrl, my_SSL_CTX_ctrl);
+
+        REGISTER_GLOBAL_MOCK_RETURNS(ENGINE_init, 1, 0);
+        REGISTER_GLOBAL_MOCK_RETURNS(ENGINE_set_default, 1, 0);
+        REGISTER_GLOBAL_MOCK_RETURNS(ENGINE_load_private_key, g_evp_pkey, NULL);
+        REGISTER_GLOBAL_MOCK_RETURNS(ENGINE_finish, 1, 0);
     }
 
     TEST_SUITE_CLEANUP(TestClassCleanup)
@@ -336,10 +349,11 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         STRICT_EXPECTED_CALL(PEM_read_bio_X509_AUX(IGNORED_PTR_ARG, NULL, NULL, NULL));
         STRICT_EXPECTED_CALL(SSL_CTX_use_certificate(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L) && (OPENSSL_VERSION_NUMBER < 0x20000000L)
-        //STRICT_EXPECTED_CALL(SSL_CTX_clear_extra_chain_certs(IGNORED_PTR_ARG));
+        // Actual macro name: SSL_CTX_clear_extra_chain_certs:
         STRICT_EXPECTED_CALL(SSL_CTX_ctrl(TEST_SSL_CTX_STRUCTURE, SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS, 0, NULL));
 #endif
         STRICT_EXPECTED_CALL(PEM_read_bio_X509(IGNORED_PTR_ARG, NULL, NULL, NULL));
+        // Actual macro name: SSL_CTX_add_extra_chain_cert:
         STRICT_EXPECTED_CALL(SSL_CTX_ctrl(TEST_SSL_CTX_STRUCTURE, SSL_CTRL_EXTRA_CHAIN_CERT, IGNORED_NUM_ARG, IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(PEM_read_bio_X509(IGNORED_PTR_ARG, NULL, NULL, NULL))
             .SetReturn(NULL); // Needed because the x509 needs not to be free
@@ -347,17 +361,31 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         STRICT_EXPECTED_CALL(BIO_free(IGNORED_PTR_ARG));
     }
 
-    static void setup_add_credentials(bool is_rsa_cert)
+    static void setup_add_credentials_pem_file(bool is_rsa_cert)
     {
+        // x509_openssl_add_pem_file_key
         STRICT_EXPECTED_CALL(BIO_new_mem_buf((char*)TEST_PRIVATE_CERTIFICATE, -1));
         STRICT_EXPECTED_CALL(PEM_read_bio_PrivateKey(IGNORED_PTR_ARG, NULL, NULL, NULL));
 #ifndef __APPLE__
         STRICT_EXPECTED_CALL(EVP_PKEY_id(IGNORED_PTR_ARG)).SetReturn(is_rsa_cert ? EVP_PKEY_RSA : EVP_PKEY_EC);
 #endif
         setup_load_alias_key_cert_mocks(is_rsa_cert);
-        setup_load_certificate_chain_mocks();
         STRICT_EXPECTED_CALL(EVP_PKEY_free(g_evp_pkey));
         STRICT_EXPECTED_CALL(BIO_free(IGNORED_PTR_ARG));
+
+        setup_load_certificate_chain_mocks();
+    }
+
+    static void setup_add_credentials_engine()
+    {
+        // x509_openssl_add_pem_file_key
+        STRICT_EXPECTED_CALL(ENGINE_init(TEST_ENGINE));
+        STRICT_EXPECTED_CALL(ENGINE_set_default(TEST_ENGINE, ENGINE_METHOD_ALL));
+        STRICT_EXPECTED_CALL(ENGINE_load_private_key(TEST_ENGINE, TEST_KEY_ID, NULL, NULL));
+        setup_load_alias_key_cert_mocks(false);
+        STRICT_EXPECTED_CALL(EVP_PKEY_free(g_evp_pkey));
+        STRICT_EXPECTED_CALL(ENGINE_finish(TEST_ENGINE));
+        setup_load_certificate_chain_mocks();
     }
 
     /*Tests_SRS_X509_OPENSSL_02_001: [ If any argument is NULL then x509_openssl_add_credentials shall fail and return a non-zero value. ]*/
@@ -366,7 +394,7 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         //arrange
 
         //act
-        int result = x509_openssl_add_credentials(NULL, "certificate", "privatekey");
+        int result = x509_openssl_add_credentials(NULL, TEST_PUBLIC_CERTIFICATE, "privatekey", KEY_TYPE_DEFAULT, NULL);
 
         //assert
         ASSERT_ARE_NOT_EQUAL(int, 0, result);
@@ -380,7 +408,7 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         //arrange
 
         //act
-        int result = x509_openssl_add_credentials(TEST_SSL_CTX, NULL, "privatekey");
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX, NULL, "privatekey", KEY_TYPE_DEFAULT, NULL);
 
         //assert
         ASSERT_ARE_NOT_EQUAL(int, 0, result);
@@ -394,7 +422,46 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         //arrange
 
         //act
-        int result = x509_openssl_add_credentials(TEST_SSL_CTX, "certificate", NULL);
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX, TEST_PUBLIC_CERTIFICATE, NULL, KEY_TYPE_DEFAULT, NULL);
+
+        //assert
+        ASSERT_ARE_NOT_EQUAL(int, 0, result);
+
+        //cleanup
+    }
+
+    TEST_FUNCTION(x509_openssl_engine_add_credentials_with_NULL_certificate_fails)
+    {
+        //arrange
+
+        //act
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX, NULL, "privatekey", KEY_TYPE_ENGINE, TEST_ENGINE);
+
+        //assert
+        ASSERT_ARE_NOT_EQUAL(int, 0, result);
+
+        //cleanup
+    }
+
+    TEST_FUNCTION(x509_openssl_engine_add_credentials_with_NULL_privatekey_fails)
+    {
+        //arrange
+
+        //act
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX, TEST_PUBLIC_CERTIFICATE, NULL, KEY_TYPE_ENGINE, TEST_ENGINE);
+
+        //assert
+        ASSERT_ARE_NOT_EQUAL(int, 0, result);
+
+        //cleanup
+    }
+
+    TEST_FUNCTION(x509_openssl_engine_add_credentials_with_NULL_engine_fails)
+    {
+        //arrange
+
+        //act
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX, TEST_PUBLIC_CERTIFICATE, "privatekey", KEY_TYPE_ENGINE, NULL);
 
         //assert
         ASSERT_ARE_NOT_EQUAL(int, 0, result);
@@ -409,12 +476,12 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
     /*Tests_SRS_X509_OPENSSL_02_006: [ x509_openssl_add_credentials shall use SSL_CTX_use_certificate to load the certicate into the SSL context. ] */
     /*Tests_SRS_X509_OPENSSL_02_007: [ x509_openssl_add_credentials shall use SSL_CTX_use_RSAPrivateKey to load the private key into the SSL context. ]*/
     /*Tests_SRS_X509_OPENSSL_02_008: [ If no error occurs, then x509_openssl_add_credentials shall succeed and return 0. ] */
-    TEST_FUNCTION(x509_openssl_add_credentials_happy_path)
+    TEST_FUNCTION(x509_openssl_add_credentials_rsa_happy_path)
     {
-        setup_add_credentials(true);
+        setup_add_credentials_pem_file(true);
 
         //act
-        int result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE);
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE, KEY_TYPE_DEFAULT, NULL);
 
         //assert
         ASSERT_ARE_EQUAL(int, 0, result);
@@ -425,10 +492,10 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
 
     TEST_FUNCTION(x509_openssl_add_credentials_ecc_happy_path)
     {
-        setup_add_credentials(false);
+        setup_add_credentials_pem_file(false);
 
         //act
-        int result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE);
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE, KEY_TYPE_DEFAULT, NULL);
 
         //assert
         ASSERT_ARE_EQUAL(int, 0, result);
@@ -437,8 +504,21 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         //cleanup
     }
 
-    /*Tests_SRS_X509_OPENSSL_02_009: [ Otherwise x509_openssl_add_credentials shall fail and return a non-zero number. ]*/
-    TEST_FUNCTION(x509_openssl_add_credentials_fails)
+    TEST_FUNCTION(x509_openssl_engine_add_credentials_happy_path)
+    {
+        setup_add_credentials_engine();
+
+        //act
+        int result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_KEY_ID, KEY_TYPE_ENGINE, TEST_ENGINE);
+
+        //assert
+        ASSERT_ARE_EQUAL(int, 0, result);
+        ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+        //cleanup
+    }
+
+    void x509_openssl_add_credentials_fails(bool is_rsa, bool use_engine)
     {
         //arrange
         umock_c_reset_all_calls();
@@ -446,29 +526,58 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
         int negativeTestsInitResult = umock_c_negative_tests_init();
         ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
-        setup_add_credentials(true);
+        if (!use_engine)
+        {
+            setup_add_credentials_pem_file(is_rsa);
+        }
+        else
+        {
+            setup_add_credentials_engine();
+        }
 
         umock_c_negative_tests_snapshot();
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L) && (OPENSSL_VERSION_NUMBER < 0x20000000L)
     #ifdef __APPLE__
-            size_t calls_cannot_fail[] = { 4, 8, 9, 10, 11, 12, 13, 14, 15 };
-    #else
-            size_t calls_cannot_fail[] = { 2, 5, 9, 10, 11, 12, 13, 14, 15, 16 };
+        size_t calls_cannot_fail_rsa[] = { 4, 5, 6, 10, 12, 13, 14 };
+        size_t calls_cannot_fail_ecc[] = { 3, 4, 8, 10, 11, 12} ;
+        size_t calls_cannot_fail_engine[] = { 4, 9, 11, 12, 13 };
+#else
+        size_t calls_cannot_fail_rsa[] = { 2, 5, 6, 7, 11, 12, 14, 15, 16 };
+        size_t calls_cannot_fail_ecc[] = { 2, 4, 5, 9, 10, 12, 13, 14 };
+        size_t calls_cannot_fail_engine[] = { 4, 9, 10, 12, 13, 14 };
     #endif
 #else
     #ifdef __APPLE__
-            size_t calls_cannot_fail[] = { 4, 8, 9, 10, 11, 12, 13, 14 };
+        size_t calls_cannot_fail_rsa[] = { 4, 5, 6, 10, 12, 13, 14 };
+        size_t calls_cannot_fail_ecc[] = { 3, 4, 8, 10, 11, 12 };
+        size_t calls_cannot_fail_engine[] = {4, 9, 11, 12, 13};
     #else
-            size_t calls_cannot_fail[] = { 2, 5, 9, 10, 11, 12, 13, 14, 15 };
+        size_t calls_cannot_fail_rsa[] = { 2, 5, 6, 7, 11, 13, 14, 15, 16 };
+        size_t calls_cannot_fail_ecc[] = { 2, 4, 5, 9, 11, 12, 13, 14 };
+        size_t calls_cannot_fail_engine[] = { 4, 9, 11, 12, 13, 14 };
     #endif
 #endif
+        size_t *calls_cannot_fail;
+        size_t calls_cannot_fail_size;
+
+        if (!use_engine)
+        {
+            calls_cannot_fail = is_rsa ? calls_cannot_fail_rsa : calls_cannot_fail_ecc;
+            calls_cannot_fail_size = is_rsa ? sizeof(calls_cannot_fail_rsa) / sizeof(calls_cannot_fail_rsa[0]) : sizeof(calls_cannot_fail_ecc) / sizeof(calls_cannot_fail_ecc[0]);
+        }
+        else
+        {
+            calls_cannot_fail = calls_cannot_fail_engine;
+            calls_cannot_fail_size = sizeof(calls_cannot_fail_engine) / sizeof(calls_cannot_fail_engine[0]);
+        }
+
         //act
         int result;
         size_t count = umock_c_negative_tests_call_count();
         for (size_t index = 0; index < count; index++)
         {
-            if (should_skip_index(index, calls_cannot_fail, sizeof(calls_cannot_fail) / sizeof(calls_cannot_fail[0])) != 0)
+            if (should_skip_index(index, calls_cannot_fail, calls_cannot_fail_size) != 0)
             {
                 continue;
             }
@@ -481,7 +590,14 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
 
             g_replace_ctx.extra_certs = NULL;
 
-            result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE);
+            if (!use_engine)
+            {
+                result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_PRIVATE_CERTIFICATE, KEY_TYPE_DEFAULT, NULL);
+            }
+            else
+            {
+                result = x509_openssl_add_credentials(TEST_SSL_CTX_STRUCTURE, TEST_PUBLIC_CERTIFICATE, TEST_KEY_ID, KEY_TYPE_ENGINE, TEST_ENGINE);
+            }
 
             //assert
             ASSERT_ARE_NOT_EQUAL(int, 0, result, tmp_msg);
@@ -489,6 +605,23 @@ BEGIN_TEST_SUITE(x509_openssl_unittests)
 
         //cleanup
         umock_c_negative_tests_deinit();
+    }
+
+    /*Tests_SRS_X509_OPENSSL_02_009: [ Otherwise x509_openssl_add_credentials shall fail and return a non-zero number. ]*/
+    TEST_FUNCTION(x509_openssl_add_rsa_credentials_fails)
+    {
+        x509_openssl_add_credentials_fails(/* is_rsa: */ true, /* use_engine: */ false);
+    }
+
+    /*Tests_SRS_X509_OPENSSL_02_009: [ Otherwise x509_openssl_add_credentials shall fail and return a non-zero number. ]*/
+    TEST_FUNCTION(x509_openssl_add_ecc_credentials_fails)
+    {
+        x509_openssl_add_credentials_fails(/* is_rsa: */ false, /* use_engine: */ false);
+    }
+
+    TEST_FUNCTION(x509_openssl_add_engine_credentials_fails)
+    {
+        x509_openssl_add_credentials_fails(/* is_rsa: */ false, /* use_engine: */ true);
     }
 
     /*Tests_SRS_X509_OPENSSL_02_010: [ If ssl_ctx is NULL then x509_openssl_add_certificates shall fail and return a non-zero value. ]*/

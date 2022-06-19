@@ -50,7 +50,7 @@ TEST_FUNCTION(mbs_to_wcs_converts_a_simple_LOCALE_C_string)
     free(result);
 }
 
-/*the values in this test are taken from https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/mbstowcs-mbstowcs-l?view=vs-2017*/
+/*the values in this test are taken from https://docs.microsoft.com/cpp/c-runtime-library/reference/mbstowcs-mbstowcs-l?view=vs-2017*/
 TEST_FUNCTION(mbs_to_wcs_converts_a_Japanese_string)
 {
     ///arrange
@@ -90,7 +90,7 @@ TEST_FUNCTION(wcs_to_mbs_converts_a_simple_LOCALE_C_string)
     free(result);
 }
 
-/*the values in this test are taken from https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/mbstowcs-mbstowcs-l?view=vs-2017*/
+/*the values in this test are taken from https://docs.microsoft.com/cpp/c-runtime-library/reference/mbstowcs-mbstowcs-l?view=vs-2017*/
 TEST_FUNCTION(wcs_to_mbs_converts_a_Japanese_string)
 {
     ///arrange
@@ -286,7 +286,7 @@ TEST_FUNCTION(vsprintf_wchar_with_empty_string_succeeds)
     wchar_t* result;
 
     ///act
-    result = vsprintf_wchar_wrapper_function(L"%s", "");
+    result = vsprintf_wchar_wrapper_function(L"%s", L"");
 
     ///assert
     ASSERT_ARE_EQUAL(int, 0, wcscmp(result, L""));

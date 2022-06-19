@@ -336,6 +336,27 @@ static int buildAllRequests(HTTPAPIEX_HANDLE_DATA* handle, HTTPAPI_REQUEST_TYPE 
     return result;
 }
 
+static bool validRequestType(HTTPAPI_REQUEST_TYPE requestType)
+{
+    bool result;
+
+    if ((requestType == HTTPAPI_REQUEST_GET) ||
+        (requestType == HTTPAPI_REQUEST_POST) ||
+        (requestType == HTTPAPI_REQUEST_PUT) ||
+        (requestType == HTTPAPI_REQUEST_DELETE) ||
+        (requestType == HTTPAPI_REQUEST_PATCH) ||
+        (requestType == HTTPAPI_REQUEST_HEAD))
+    {
+        result = true;
+    }
+    else
+    {
+        result = false;
+    }
+
+    return result;
+}
+
 HTTPAPIEX_RESULT HTTPAPIEX_ExecuteRequest(HTTPAPIEX_HANDLE handle, HTTPAPI_REQUEST_TYPE requestType, const char* relativePath,
     HTTP_HEADERS_HANDLE requestHttpHeadersHandle, BUFFER_HANDLE requestContent, unsigned int* statusCode,
     HTTP_HEADERS_HANDLE responseHttpHeadersHandle, BUFFER_HANDLE responseContent)
@@ -350,7 +371,7 @@ HTTPAPIEX_RESULT HTTPAPIEX_ExecuteRequest(HTTPAPIEX_HANDLE handle, HTTPAPI_REQUE
     else
     {
         /*Codes_SRS_HTTPAPIEX_02_007: [If parameter requestType does not indicate a valid request, HTTPAPIEX_ExecuteRequest shall fail and return HTTPAPIEX_INVALID_ARG.] */
-        if (requestType >= MU_COUNT_ARG(HTTPAPI_REQUEST_TYPE_VALUES))
+        if (!validRequestType(requestType))
         {
             result = HTTPAPIEX_INVALID_ARG;
             LOG_HTTAPIEX_ERROR();

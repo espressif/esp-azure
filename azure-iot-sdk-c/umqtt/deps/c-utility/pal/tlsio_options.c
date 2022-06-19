@@ -73,6 +73,8 @@ static bool is_supported_string_option(const char* name)
     return
         (strcmp(name, OPTION_TRUSTED_CERT) == 0) ||
         (strcmp(name, OPTION_OPENSSL_CIPHER_SUITE) == 0) ||
+        (strcmp(name, OPTION_OPENSSL_ENGINE) == 0) ||
+        (strcmp(name, OPTION_OPENSSL_PRIVATE_KEY_TYPE) == 0) ||
         (strcmp(name, SU_OPTION_X509_CERT) == 0) ||
         (strcmp(name, SU_OPTION_X509_PRIVATE_KEY) == 0) ||
         (strcmp(name, OPTION_X509_ECC_CERT) == 0) ||

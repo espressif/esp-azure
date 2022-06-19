@@ -1310,7 +1310,7 @@ namespace amqplib_generator
             #line default
             #line hidden
             this.Write("_instance->composite_value = amqpvalue_clone(value);\r\n\r\n                    resul" +
-                    "t = 0;\r\n                } while((void)0,0);\r\n            }\r\n        }\r\n    }\r\n\r\n" +
+                    "t = 0;\r\n                } while(0);\r\n            }\r\n        }\r\n    }\r\n\r\n" +
                     "    return result;\r\n}\r\n\r\n");
             
             #line 303 "g:\repos\azure-event-hubs-c\deps\azure-uamqp-c\uamqp_generator\amqp_definitions_c.tt"

@@ -6,6 +6,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/constbuffer_array_batcher.h"
 #include "azure_c_shared_utility/memory_data.h"
+#include "azure_c_shared_utility/safe_math.h"
 
 CONSTBUFFER_ARRAY_HANDLE constbuffer_array_batcher_batch(CONSTBUFFER_ARRAY_HANDLE* payloads, uint32_t count)
 {
@@ -45,7 +46,7 @@ CONSTBUFFER_ARRAY_HANDLE constbuffer_array_batcher_batch(CONSTBUFFER_ARRAY_HANDL
             /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_003: [ Otherwise constbuffer_array_batcher_batch shall obtain the number of buffers used by each CONSTBUFFER_ARRAY. ]*/
 
             /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_004: [ constbuffer_array_batcher_batch shall allocate memory for the header buffer (enough to hold the entire batch header namingly (count + 1) uint32_t values). ]*/
-            header_memory = malloc(sizeof(uint32_t) * (count + 1));
+            header_memory = malloc(sizeof(uint32_t) * ((size_t)count + 1));
             if (header_memory == NULL)
             {
                 /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_010: [ If any error occurrs, constbuffer_array_batcher_batch shall fail and return NULL. ]*/
@@ -72,8 +73,14 @@ CONSTBUFFER_ARRAY_HANDLE constbuffer_array_batcher_batch(CONSTBUFFER_ARRAY_HANDL
                 }
 
                 /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_007: [ constbuffer_array_batcher_batch shall allocate enough memory for all the buffer handles in all the arrays + one extra header buffer handle. ]*/
-                all_buffers = malloc(sizeof(CONSTBUFFER_HANDLE) * (total_buffer_count + 1));
-                if (all_buffers == NULL)
+                size_t all_buffers_array_size = (size_t)total_buffer_count + 1;
+                size_t malloc_size = safe_multiply_size_t(sizeof(CONSTBUFFER_HANDLE), (all_buffers_array_size));
+
+                if (malloc_size == SIZE_MAX)
+                {
+                    LogError("malloc size is invalid");
+                }
+                else if ((all_buffers = malloc(malloc_size)) == NULL)
                 {
                     /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_010: [ If any error occurrs, constbuffer_array_batcher_batch shall fail and return NULL. ]*/
                     LogError("malloc failed");
@@ -82,9 +89,12 @@ CONSTBUFFER_ARRAY_HANDLE constbuffer_array_batcher_batch(CONSTBUFFER_ARRAY_HANDL
                 {
                     uint32_t current_index = 0;
 
-                    /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_008: [ constbuffer_array_batcher_batch shall populate the first handle in the newly allocated handles array with the header buffer handle. ]*/
-                    all_buffers[current_index] = CONSTBUFFER_CreateWithMoveMemory((void*)header_memory, sizeof(uint32_t) * (count + 1));
-                    if (all_buffers[current_index] == NULL)
+                    size_t move_memory_size = safe_multiply_size_t(sizeof(uint32_t), ((size_t)count + 1));
+                    if (move_memory_size == SIZE_MAX)
+                    {
+                        LogError("invalid malloc size in CONSTBUFFER_CreateWithMoveMemory");
+                    }
+                    else if ((all_buffers[current_index] = CONSTBUFFER_CreateWithMoveMemory((void*)header_memory, move_memory_size)) == NULL)
                     {
                         /* Codes_SRS_CONSTBUFFER_ARRAY_BATCHER_01_010: [ If any error occurrs, constbuffer_array_batcher_batch shall fail and return NULL. ]*/
                         LogError("CONSTBUFFER_CreateWithMoveMemory failed");
@@ -105,14 +115,26 @@ CONSTBUFFER_ARRAY_HANDLE constbuffer_array_batcher_batch(CONSTBUFFER_ARRAY_HANDL
 
                             for (j = 0; j < buffer_count; j++)
                             {
+#ifdef _MSC_VER
+#pragma warning(disable:6386) // warning C6386: Buffer overrun while writing to 'all_buffers'
+#endif
                                 all_buffers[current_index++] = constbuffer_array_get_buffer(payloads[i], j);
+#ifdef _MSC_VER
+#pragma warning (default:6386)
+#endif
                             }
                         }
 
-                        result = constbuffer_array_create(all_buffers, total_buffer_count + 1);
-                        for (i = 0; i < current_index; i++)
+                        result = constbuffer_array_create(all_buffers, (uint32_t)all_buffers_array_size);
+                        for (i = 0; i < all_buffers_array_size; i++)
                         {
+#ifdef _MSC_VER
+#pragma warning(disable:6385) // warning C6385: Reading invalid data from 'all_buffers'
+#endif
                             CONSTBUFFER_DecRef(all_buffers[i]);
+#ifdef _MSC_VER
+#pragma warning (default:6385)
+#endif
                         }
 
                         if (result == NULL)

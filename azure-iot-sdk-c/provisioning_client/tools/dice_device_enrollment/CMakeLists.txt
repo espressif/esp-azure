@@ -2,7 +2,7 @@
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #This is the CMakeLists.txt for testing
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 compileAsC99()
 
@@ -35,6 +35,9 @@ if(${use_openssl})
     endif()
 endif()
 
-linkSharedUtil(dice_device_enrollment)
-link_security_client(dice_device_enrollment)
-target_link_libraries(dice_device_enrollment parson)
+target_link_libraries(dice_device_enrollment
+    prov_auth_client
+    hsm_security_client
+    aziotsharedutil
+    parson
+)

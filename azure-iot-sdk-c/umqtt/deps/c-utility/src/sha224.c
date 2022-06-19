@@ -241,15 +241,22 @@ int SHA256Input(SHA256Context *context, const uint8_t *message_array, unsigned i
     {
         while (length-- && !context->Corrupted)
         {
-            context->Message_Block[context->Message_Block_Index++] = (*message_array & 0xFF);
-
-            if (!SHA224_256AddLength(context, 8) && (context->Message_Block_Index == SHA256_Message_Block_Size))
+            if (context->Message_Block_Index < SHA256_Message_Block_Size)
             {
-                SHA224_256ProcessMessageBlock(context);
+                context->Message_Block[context->Message_Block_Index++] = (*message_array & 0xFF);
+
+                if (!SHA224_256AddLength(context, 8) && (context->Message_Block_Index == SHA256_Message_Block_Size))
+                {
+                    SHA224_256ProcessMessageBlock(context);
+                }
+                message_array++;
             }
-            message_array++;
+            else
+            {
+                result = context->Corrupted = shaBadParam;
+            }
         }
-        result = shaSuccess;
+        result = context->Corrupted;
     }
     return result;
 }

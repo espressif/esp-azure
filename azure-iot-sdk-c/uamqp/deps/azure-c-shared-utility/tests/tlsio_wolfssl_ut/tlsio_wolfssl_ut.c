@@ -136,6 +136,13 @@ MOCK_FUNCTION_END(SSL_SUCCESS)
 MOCK_FUNCTION_WITH_CODE(WOLFSSL_API, int, wolfSSL_check_domain_name, WOLFSSL*, ssl, const char*, dn)
 MOCK_FUNCTION_END(SSL_SUCCESS)
 
+#if defined(LIBWOLFSSL_VERSION_HEX) && LIBWOLFSSL_VERSION_HEX >= 0x04000000
+MOCK_FUNCTION_WITH_CODE(WOLFSSL_API, int, wolfSSL_Debugging_ON)
+MOCK_FUNCTION_END(SSL_SUCCESS)
+MOCK_FUNCTION_WITH_CODE(WOLFSSL_API, int, wolfSSL_SetLoggingCb, wolfSSL_Logging_cb, log_function)
+MOCK_FUNCTION_END(SSL_SUCCESS)
+#endif
+
 MU_DEFINE_ENUM_STRINGS(UMOCK_C_ERROR_CODE, UMOCK_C_ERROR_CODE_VALUES)
 
 static int my_mallocAndStrcpy_s(char** destination, const char* source)
@@ -197,6 +204,9 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_UMOCK_ALIAS_TYPE(CONCRETE_IO_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(XIO_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(CallbackIORecv, void*);
+#if defined(LIBWOLFSSL_VERSION_HEX) && LIBWOLFSSL_VERSION_HEX >= 0x04000000
+    REGISTER_UMOCK_ALIAS_TYPE(wolfSSL_Logging_cb, void*);
+#endif
     REGISTER_UMOCK_ALIAS_TYPE(HandShakeDoneCb, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_IO_OPEN_COMPLETE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_BYTES_RECEIVED, void*);
@@ -797,6 +807,52 @@ TEST_FUNCTION(tlsio_wolfssl_setoption_device_id_fail)
     //act
     int device_id = TEST_DEVICE_ID;
     int test_result = tlsio_wolfssl_setoption(io_handle, OPTION_WOLFSSL_SET_DEVICE_ID, &device_id);
+
+    //assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, test_result);
+
+    //clean
+    tlsio_wolfssl_destroy(io_handle);
+}
+#endif
+
+#if defined(LIBWOLFSSL_VERSION_HEX) && LIBWOLFSSL_VERSION_HEX >= 0x04000000
+TEST_FUNCTION(tlsio_wolfssl_setoption_debug_log_succeed)
+{
+    //arrange
+    TLSIO_CONFIG tls_io_config;
+    memset(&tls_io_config, 0, sizeof(tls_io_config));
+    tls_io_config.hostname = TEST_HOSTNAME;
+    CONCRETE_IO_HANDLE io_handle = tlsio_wolfssl_create(&tls_io_config);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(wolfSSL_Debugging_ON()).SetReturn(1);
+    STRICT_EXPECTED_CALL(wolfSSL_SetLoggingCb(IGNORED_PTR_ARG)).SetReturn(1);
+
+    //act
+    int debugLogEnable = true;
+    int test_result = tlsio_wolfssl_setoption(io_handle, "debug_log", &debugLogEnable);
+
+    //assert
+    ASSERT_ARE_EQUAL(int, 0, test_result);
+
+    //clean
+    tlsio_wolfssl_destroy(io_handle);
+}
+
+TEST_FUNCTION(tlsio_wolfssl_setoption_debug_log_disable_fail)
+{
+    //arrange
+    TLSIO_CONFIG tls_io_config;
+    memset(&tls_io_config, 0, sizeof(tls_io_config));
+    tls_io_config.hostname = TEST_HOSTNAME;
+    CONCRETE_IO_HANDLE io_handle = tlsio_wolfssl_create(&tls_io_config);
+    umock_c_reset_all_calls();
+
+    //act
+    // Unlike standard option handlers, turning debug_log off is done via NULL instead of a non-zero int.
+    int* debugLogEnable = NULL;
+    int test_result = tlsio_wolfssl_setoption(io_handle, "debug_log", NULL);
 
     //assert
     ASSERT_ARE_NOT_EQUAL(int, 0, test_result);

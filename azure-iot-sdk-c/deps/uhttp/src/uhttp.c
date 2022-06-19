@@ -135,7 +135,7 @@ static int process_status_code_line(const unsigned char* buffer, size_t len, siz
     size_t index;
     int spaceFound = 0;
     const char* initSpace = NULL;
-    char status_code[4];
+    char status_code[4] = { 0 };
 
     for (index = 0; index < len; index++)
     {
@@ -185,32 +185,41 @@ static int process_header_line(const unsigned char* buffer, size_t len, size_t* 
         if (buffer[index] == ':' && !colonEncountered)
         {
             colonEncountered = true;
-            size_t keyLen = (&buffer[index])-targetPos;
+            size_t keyLen = (&buffer[index]) - targetPos;
 
-            if (headerKey != NULL)
+            if (keyLen == 0)
             {
-                free(headerKey);
-                headerKey = NULL;
-            }
-            headerKey = (char*)malloc(keyLen+1);
-            if (headerKey == NULL)
-            {
+                LogError("Invalid header name with zero length.");
                 result = MU_FAILURE;
                 continueProcessing = false;
             }
             else
             {
-                memcpy(headerKey, targetPos, keyLen);
-                headerKey[keyLen] = '\0';
-
-                // Convert to lower case
-                for (size_t inner = 0; inner < keyLen; inner++)
+                if (headerKey != NULL)
                 {
-                    headerKey[inner] = (char)tolower(headerKey[inner]);
+                    free(headerKey);
+                    headerKey = NULL;
                 }
+                headerKey = (char*)malloc(keyLen + 1);
+                if (headerKey == NULL)
+                {
+                    result = MU_FAILURE;
+                    continueProcessing = false;
+                }
+                else
+                {
+                    memcpy(headerKey, targetPos, keyLen);
+                    headerKey[keyLen] = '\0';
 
-                targetPos = buffer+index+1;
-                crlfEncounted = false;
+                    // Convert to lower case
+                    for (size_t inner = 0; inner < keyLen; inner++)
+                    {
+                        headerKey[inner] = (char)tolower(headerKey[inner]);
+                    }
+
+                    targetPos = buffer+index+1;
+                    crlfEncounted = false;
+                }
             }
         }
         else if (buffer[index] == '\r')

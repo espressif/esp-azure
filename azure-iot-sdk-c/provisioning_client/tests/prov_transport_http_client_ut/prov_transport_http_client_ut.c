@@ -426,6 +426,8 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_set_trusted_cert, HTTP_CLIENT_ERROR);
         REGISTER_GLOBAL_MOCK_RETURN(uhttp_client_set_X509_cert, HTTP_CLIENT_OK);
         REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_set_X509_cert, HTTP_CLIENT_ERROR);
+        REGISTER_GLOBAL_MOCK_RETURN(uhttp_client_set_option, HTTP_CLIENT_OK);
+        REGISTER_GLOBAL_MOCK_FAIL_RETURN(uhttp_client_set_option, HTTP_CLIENT_ERROR);
 
         REGISTER_GLOBAL_MOCK_HOOK(HTTPHeaders_Alloc, my_HTTPHeaders_Alloc);
         REGISTER_GLOBAL_MOCK_FAIL_RETURN(HTTPHeaders_Alloc, NULL);
@@ -642,7 +644,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_001: [ If uri, scope_id, registration_id or dps_api_version are NULL prov_transport_http_create shall return NULL. ] */
     TEST_FUNCTION(prov_transport_http_create_uri_NULL_fail)
     {
         //arrange
@@ -658,7 +659,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_001: [ If uri, scope_id, registration_id or dps_api_version are NULL prov_transport_http_create shall return NULL. ] */
     TEST_FUNCTION(prov_transport_http_create_scope_id_NULL_fail)
     {
         //arrange
@@ -673,7 +673,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_001: [ If uri, scope_id, registration_id or dps_api_version are NULL prov_transport_http_create shall return NULL. ] */
     TEST_FUNCTION(prov_transport_http_create_api_version_NULL_fail)
     {
         //arrange
@@ -688,8 +687,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_002: [ prov_transport_http_create shall allocate the memory for the PROV_DEVICE_TRANSPORT_HANDLE variables. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_004: [ On success prov_transport_http_create shall return a PROV_DEVICE_TRANSPORT_HANDLE. ] */
     TEST_FUNCTION(prov_transport_http_create_succeed)
     {
         //arrange
@@ -706,7 +703,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_003: [ If any error is encountered prov_transport_http_create shall return NULL. ] */
     TEST_FUNCTION(prov_transport_http_create_fail)
     {
         //arrange
@@ -737,7 +733,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         umock_c_negative_tests_deinit();
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_007: [ If the argument handle is NULL, prov_transport_http_destroy shall do nothing ] */
     TEST_FUNCTION(prov_dev_http_transport_destroy_handle_NULL_succees)
     {
         //arrange
@@ -751,8 +746,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_006: [ prov_transport_http_destroy shall call the uhttp_client_destroy function function associated with the http_client ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_005: [ prov_transport_http_destroy shall free all resources associated with the PROV_DEVICE_TRANSPORT_HANDLE handle ] */
     TEST_FUNCTION(prov_dev_http_transport_destroy_succeed)
     {
         //arrange
@@ -770,7 +763,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_008: [ If the argument handle, data_callback, or status_cb are NULL, prov_transport_http_open shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_open_handle_NULL_fail)
     {
         //arrange
@@ -788,7 +780,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_008: [ If the argument handle or data_callback is NULL, prov_transport_http_open shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_open_register_data_NULL_fail)
     {
         //arrange
@@ -857,7 +848,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_001: [ If uri, scope_id, registration_id or dps_api_version are NULL prov_transport_http_create shall return NULL. ] */
     TEST_FUNCTION(prov_transport_http_open_registration_id_NULL_fail)
     {
         //arrange
@@ -875,10 +865,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_009: [ prov_transport_http_open shall create the http client adding any proxy and certificate information that is presented. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_010: [ prov_transport_http_open shall opening the http communications with the DPS service. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_009: [ prov_transport_http_open shall create the http client adding any proxy and certificate information that is presented. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_012: [ If successful prov_transport_http_open shall return 0. ] */
     TEST_FUNCTION(prov_transport_open_tpm_succeed)
     {
         //arrange
@@ -944,7 +930,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_013: [ If an error is encountered prov_transport_http_open shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_open_fail)
     {
         //arrange
@@ -986,7 +971,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         umock_c_negative_tests_deinit();
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_014: [ If the argument handle is NULL, prov_transport_http_close shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_close_handle_NULL_succeed)
     {
         //arrange
@@ -1001,8 +985,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_015: [ prov_transport_http_close shall attempt to close the http communication with the DPS service. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_016: [ On success prov_transport_http_close shall return 0. ] */
     TEST_FUNCTION(prov_dev_http_transport_close_succeed)
     {
         //arrange
@@ -1028,7 +1010,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_017: [ If the argument handle or json_data is NULL, prov_transport_http_register_device shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_register_device_handle_NULL_fail)
     {
         //arrange
@@ -1064,7 +1045,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_019: [ prov_transport_http_register_device shall construct the path to the DPS service in the following format: /<scope_id>/registrations/<url_encoded_registration_id>/register-me?api-version=<api_version> ] */
     TEST_FUNCTION(prov_transport_http_register_device_succeed)
     {
         int result;
@@ -1156,7 +1136,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_029: [ If the argument handle, or operation_id is NULL, prov_transport_http_get_operation_status shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_get_operation_status_handle_NULL_fail)
     {
         //arrange
@@ -1189,10 +1168,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_030: [ prov_transport_http_get_operation_status shall construct the http headers with SAS_TOKEN as Authorization header. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_031: [ prov_transport_http_get_operation_status shall construct the path to the DPS service in the following format: /<scope_id>/registrations/<url_encoded_registration_id>/operations<url_encoded_operation_id>?api-version=<api_version> ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_032: [ prov_transport_http_get_operation_status shall send the request using the http client. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_034: [ On success prov_transport_http_get_operation_status shall return 0. ] */
     TEST_FUNCTION(prov_transport_http_get_operation_status_succeed)
     {
         //arrange
@@ -1224,7 +1199,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_033: [ If any error is encountered prov_transport_http_get_operation_status shall return a non-zero value. ] */
      TEST_FUNCTION(prov_transport_http_get_operation_status_fail)
     {
         size_t count;
@@ -1280,7 +1254,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         umock_c_negative_tests_deinit();
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_037: [ If the prov_transport_http_dowork state is Message received prov_transport_http_dowork shall call the calling process registration_data callback ] */
     TEST_FUNCTION(prov_transport_http_dowork_succeed)
     {
         //arrange
@@ -1384,7 +1357,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_039: [ If the state is Error, prov_transport_http_dowork shall call the registration_data callback with PROV_DEVICE_TRANSPORT_RESULT_ERROR and NULL payload_data. ] */
     TEST_FUNCTION(prov_transport_http_dowork_error)
     {
         //arrange
@@ -1410,7 +1382,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_040: [ If the argument handle, is NULL, prov_transport_http_set_trace shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_trace_handle_NULL_fail)
     {
         //arrange
@@ -1425,8 +1396,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_041: [ If the http client is not NULL, prov_transport_http_set_trace shall set the http client log trace function with the specified trace_on flag. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_042: [ On success prov_transport_http_set_trace shall return zero. ] */
     TEST_FUNCTION(prov_transport_http_set_trace_succeed)
     {
         //arrange
@@ -1448,7 +1417,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_041: [ If the http client is not NULL, prov_transport_http_set_trace shall set the http client log trace function with the specified trace_on flag. ] */
     TEST_FUNCTION(prov_transport_http_set_trace_http_not_open_succeed)
     {
         //arrange
@@ -1467,7 +1435,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_043: [ If the argument handle, private_key or certificate is NULL, prov_transport_http_x509_cert shall return a non-zero value. ] */
     TEST_FUNCTION(prov_dev_http_transport_x509_cert_handle_NULL_fail)
     {
         //arrange
@@ -1482,8 +1449,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_046: [ On success prov_transport_http_set_trace shall return zero. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_045: [ prov_transport_http_x509_cert shall store the certificate and private_key for use when the http client connects. ] */
     TEST_FUNCTION(prov_dev_http_transport_x509_cert_succeed)
     {
         //arrange
@@ -1505,9 +1470,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_047: [ If the argument handle, certificate is NULL, prov_transport_http_set_trusted_cert shall return a non-zero value. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_049: [ prov_transport_http_set_trusted_cert shall store the certificate for use when the http client connects. ] */
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_050: [ On success prov_transport_http_set_trusted_cert shall return zero. ] */
     TEST_FUNCTION(prov_transport_http_set_trusted_cert_succeed)
     {
         //arrange
@@ -1528,7 +1490,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_050: [ On success prov_transport_http_set_trusted_cert shall return zero. ] */
     TEST_FUNCTION(prov_transport_http_set_trusted_cert_fail)
     {
         //arrange
@@ -1549,7 +1510,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_051: [ If the argument handle or proxy_options is NULL, prov_transport_http_set_proxy shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_handle_NULL_fail)
     {
         //arrange
@@ -1568,7 +1528,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         //cleanup
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_051: [ If the argument handle or proxy_options is NULL, prov_transport_http_set_proxy shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_proxy_opt_NULL_fail)
     {
         //arrange
@@ -1587,7 +1546,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_055: [ If proxy_options::host_name is NULL prov_transport_http_set_proxy shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_no_hostname_fail)
     {
         //arrange
@@ -1608,7 +1566,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_054: [ On success prov_transport_http_set_proxy shall return zero. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_no_user_succeed)
     {
         //arrange
@@ -1632,7 +1589,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_054: [ On success prov_transport_http_set_proxy shall return zero. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_user_succeed)
     {
         //arrange
@@ -1660,7 +1616,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_053: [ If proxy_options::username is NULL and proxy_options::password is not NULL prov_transport_http_set_proxy shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_user_no_pwd_fail)
     {
         //arrange
@@ -1683,7 +1638,6 @@ BEGIN_TEST_SUITE(prov_transport_http_client_ut)
         prov_dev_http_transport_destroy(handle);
     }
 
-    /* Tests_PROV_TRANSPORT_HTTP_CLIENT_07_052: [ If any error is encountered prov_transport_http_set_proxy shall return a non-zero value. ] */
     TEST_FUNCTION(prov_transport_http_set_proxy_fail)
     {
         //arrange

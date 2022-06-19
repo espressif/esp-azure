@@ -42,6 +42,7 @@ ASYNC_OPERATION_HANDLE async_operation_create(ASYNC_OPERATION_CANCEL_HANDLER_FUN
         else
         {
             /* Codes_SRS_ASYNC_OPERATION_01_001: [ `async_operation_create` shall return a non-NULL handle to a newly created asynchronous operation instance.]*/
+            (void)memset(async_operation, 0, context_size);
             async_operation->async_operation_cancel_handler = async_operation_cancel_handler;
         }
     }

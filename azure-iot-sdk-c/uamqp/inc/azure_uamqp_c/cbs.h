@@ -4,6 +4,7 @@
 #ifndef CBS_H
 #define CBS_H
 
+#include "azure_uamqp_c/async_operation.h"
 #include "azure_uamqp_c/session.h"
 #include "azure_macro_utils/macro_utils.h"
 #include "umock_c/umock_c_prod.h"
@@ -38,8 +39,8 @@ MU_DEFINE_ENUM(CBS_OPEN_COMPLETE_RESULT, CBS_OPEN_COMPLETE_RESULT_VALUES)
     MOCKABLE_FUNCTION(, void, cbs_destroy, CBS_HANDLE, cbs);
     MOCKABLE_FUNCTION(, int, cbs_open_async, CBS_HANDLE, cbs, ON_CBS_OPEN_COMPLETE, on_cbs_open_complete, void*, on_cbs_open_complete_context, ON_CBS_ERROR, on_cbs_error, void*, on_cbs_error_context);
     MOCKABLE_FUNCTION(, int, cbs_close, CBS_HANDLE, cbs);
-    MOCKABLE_FUNCTION(, int, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
-    MOCKABLE_FUNCTION(, int, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_put_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, const char*, token, ON_CBS_OPERATION_COMPLETE, on_cbs_put_token_complete, void*, on_cbs_put_token_complete_context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, cbs_delete_token_async, CBS_HANDLE, cbs, const char*, type, const char*, audience, ON_CBS_OPERATION_COMPLETE, on_cbs_delete_token_complete, void*, on_cbs_delete_token_complete_context);
     MOCKABLE_FUNCTION(, int, cbs_set_trace, CBS_HANDLE, cbs, bool, trace_on);
 
 #ifdef __cplusplus

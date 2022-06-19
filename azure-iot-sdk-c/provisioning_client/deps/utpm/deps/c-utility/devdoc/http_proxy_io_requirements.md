@@ -332,6 +332,7 @@ extern const IO_INTERFACE_DESCRIPTION* http_proxy_io_get_interface_description(v
                        except not limited to 76 char/line>
       user-pass   = userid ":" password
       userid      = *<TEXT excluding ":">
+[SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Not a password")]
       password    = *TEXT
 
    **SRS_HTTP_PROXY_IO_01_093: [** Userids might be case sensitive. **]**

@@ -1,13 +1,13 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 if(NOT (${use_amqp} AND ${use_mqtt}))
    message(FATAL_ERROR "iothubclient_mqtt_e2e being generated without AMQP and MQTT support")
 endif()
 
-compileAsC11()
+compileAsC99()
 set(theseTestsName iothubclient_mqtt_e2e)
 
 set(${theseTestsName}_test_files
@@ -15,10 +15,6 @@ set(${theseTestsName}_test_files
     ../common_e2e/iothubclient_common_e2e.c
 )
 
-set(${theseTestsName}_nuget_test_files
-    ${theseTestsName}.c
-    ../common_e2e/iothubclient_common_e2e.c
-)
 
 set(${theseTestsName}_c_files
     ../../../certs/certs.c
@@ -66,14 +62,6 @@ if(WIN32)
            linkUAMQP(${theseTestsName}_exe)
            linkMqttLibrary(${theseTestsName}_exe)
    endif()
-
-   if(TARGET ${theseTestsName}_nuget_exe)
-           target_link_libraries(${theseTestsName}_nuget_exe
-                   iothub_test
-                   iothub_service_client
-                   rpcrt4
-        )
-    endif()
 else()
     if(UNIX) #LINUX OR APPLE
         find_package(PkgConfig REQUIRED)

@@ -108,6 +108,7 @@ The formal grammar for the client message using Augmented BNF [ABNF] follows.
 **SRS_SASL_PLAIN_01_019: [**   message   = [authzid] UTF8NUL authcid UTF8NUL passwd**]** 
 **SRS_SASL_PLAIN_01_020: [**   authcid   = 1*SAFE ; MUST accept up to 255 octets**]** 
 **SRS_SASL_PLAIN_01_021: [**   authzid   = 1*SAFE ; MUST accept up to 255 octets**]** 
+[SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Not a password")]
 **SRS_SASL_PLAIN_01_022: [**   passwd    = 1*SAFE ; MUST accept up to 255 octets**]** 
    UTF8NUL   = %x00 ; UTF-8 encoded NUL character
 

@@ -3,13 +3,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef WIN32
+#include <crtdbg.h>
+#endif // WIN32
 
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/shared_util_options.h"
-#include "iothub_client.h"
+#include "iothub_device_client.h"
 #include "iothub_client_options.h"
 #include "iothub_message.h"
 #include "iothubtransportmqtt.h"
@@ -27,8 +30,9 @@ int main(void)
 {
     int result;
     IOTHUB_LONGHAUL_RESOURCES_HANDLE iotHubLonghaulRsrcsHandle;
-    size_t test_duration_in_seconds = 12 * 60 * 60;
-    size_t test_loop_wait_time_in_seconds = 60;
+#ifdef WIN32
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif // WIN32
 
     if ((iotHubLonghaulRsrcsHandle = longhaul_tests_init()) == NULL)
     {
@@ -44,11 +48,19 @@ int main(void)
         }
         else
         {
-            result = longhaul_run_device_methods_tests(iotHubLonghaulRsrcsHandle, test_loop_wait_time_in_seconds, test_duration_in_seconds);
+            result = longhaul_run_device_methods_tests(iotHubLonghaulRsrcsHandle);
         }
 
         longhaul_tests_deinit(iotHubLonghaulRsrcsHandle);
     }
+
+#ifdef WIN32
+    if (_CrtDumpMemoryLeaks())
+    {
+        LogError("Detected memory leaks.");
+        result = MU_FAILURE;
+    }
+#endif // WIN32
 
     return result;
 }

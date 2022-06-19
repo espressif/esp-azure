@@ -47,11 +47,9 @@ typedef struct DEVICE_REPORTED_DATA_TAG
     LOCK_HANDLE lock;
 } DEVICE_REPORTED_DATA;
 
-
 static IOTHUB_ACCOUNT_INFO_HANDLE g_iothubAcctInfo = NULL;
 static IOTHUB_DEVICE_CLIENT_HANDLE iothub_deviceclient_handle = NULL;
 static IOTHUB_MODULE_CLIENT_HANDLE iothub_moduleclient_handle = NULL;
-
 
 static void reportedStateCallback(int status_code, void* userContextCallback)
 {
@@ -328,7 +326,10 @@ static void dt_e2e_update_twin(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceC
     free(twinResponse);
 }
 
-static char* dt_e2e_get_twin(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceClientDeviceTwinHandle, IOTHUB_PROVISIONED_DEVICE* deviceToUse)
+// Device and modules twins may be retrieved using either the device|module client SDK (the way a device would).  Or they may be retrieved
+// using the service SDK, simulating how a solution would interact with the twin.  The twin retrieved from the service
+// provides additional metadata about the device.  This helper API uses the service API to retrieve the required data.
+static char* dt_e2e_get_twin_from_service(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceClientDeviceTwinHandle, IOTHUB_PROVISIONED_DEVICE* deviceToUse)
 {
     char *twinData;
 
@@ -350,15 +351,7 @@ static char* dt_e2e_get_twin(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceCli
 void dt_e2e_send_reported_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
 {
     // arrange
-    IOTHUB_PROVISIONED_DEVICE* deviceToUse;
-    if (accountAuthMethod == IOTHUB_ACCOUNT_AUTH_X509)
-    {
-        deviceToUse = IoTHubAccount_GetX509Device(g_iothubAcctInfo);
-    }
-    else
-    {
-        deviceToUse = IoTHubAccount_GetSASDevice(g_iothubAcctInfo);
-    }
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
 
     DEVICE_REPORTED_DATA *device = device_reported_init();
     ASSERT_IS_NOT_NULL(device, "failed to create the device client data");
@@ -413,7 +406,7 @@ void dt_e2e_send_reported_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB
         IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceClientDeviceTwinHandle = IoTHubDeviceTwin_Create(iotHubServiceClientHandle);
         ASSERT_IS_NOT_NULL(serviceClientDeviceTwinHandle, "IoTHubDeviceTwin_Create failed");
 
-        char *twinData = dt_e2e_get_twin(serviceClientDeviceTwinHandle, deviceToUse);
+        char *twinData = dt_e2e_get_twin_from_service(serviceClientDeviceTwinHandle, deviceToUse);
 
         JSON_Value *root_value = json_parse_string(twinData);
         ASSERT_IS_NOT_NULL(root_value, "json_parse_string failed");
@@ -438,7 +431,7 @@ void dt_e2e_send_reported_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB
     }
 }
 
- 
+
 
 
 static const char *COMPLETE_DESIRED_PAYLOAD_FORMAT = "{\"properties\":{\"desired\":{\"integer_property\": %d, \"string_property\": \"%s\", \"array\": [%d, \"%s\"]}}}";
@@ -489,7 +482,7 @@ static char * malloc_and_copy_unsigned_char(const unsigned char* payload, size_t
 
 static void deviceTwinCallback(DEVICE_TWIN_UPDATE_STATE update_state, const unsigned char* payload, size_t size, void* userContextCallback)
 {
-    LogInfo("Callback:: Received payload len=<%lu>, data=<%.*s>\n", (unsigned long)size, (int)size, payload);
+    LogInfo("Device Twin Callback:: Received payload len=<%lu>, data=<%.*s>\n", (unsigned long)size, (int)size, payload);
     DEVICE_DESIRED_DATA *device = (DEVICE_DESIRED_DATA *)userContextCallback;
     if (Lock(device->lock) == LOCK_ERROR)
     {
@@ -508,7 +501,7 @@ static void deviceTwinCallback(DEVICE_TWIN_UPDATE_STATE update_state, const unsi
     }
 }
 
-static DEVICE_DESIRED_DATA *device_desired_init()
+static DEVICE_DESIRED_DATA *device_desired_data_init()
 {
     DEVICE_DESIRED_DATA *retValue;
 
@@ -548,12 +541,36 @@ static void device_desired_deinit(DEVICE_DESIRED_DATA *device)
     }
 }
 
-void client_create_with_properies_and_send_d2c(MAP_HANDLE mapHandle)
+static void device_desired_reset(DEVICE_DESIRED_DATA *device)
+{
+    if (device == NULL)
+    {
+        LogError("invalid parameter device");
+    }
+    else if (Lock(device->lock) == LOCK_ERROR)
+    {
+        LogError("Lock failed");
+    }
+    else
+    {
+        device->receivedCallBack = false;
+        (void) Unlock(device->lock);
+    }
+}
+
+void client_create_with_properies_and_send_d2c(IOTHUB_PROVISIONED_DEVICE* deviceToUse, MAP_HANDLE mapHandle)
 {
     IOTHUB_MESSAGE_HANDLE msgHandle;
 
-    const char* messageStr = "Happy little message";
-    msgHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)messageStr, strlen(messageStr));
+    char messageStr[512];
+    int len = snprintf(messageStr, sizeof(messageStr), "Happy little message from device '%s'", deviceToUse->deviceId);
+    if (len < 0 || len == sizeof(messageStr))
+    {
+        ASSERT_FAIL("messageStr is not large enough!");
+        return;
+    }
+
+    msgHandle = IoTHubMessage_CreateFromByteArray((const unsigned char*)messageStr, len);
     ASSERT_IS_NOT_NULL(msgHandle, "Could not create the D2C message to be sent");
 
     MAP_HANDLE msgMapHandle = IoTHubMessage_Properties(msgHandle);
@@ -607,7 +624,7 @@ static int dt_e2e_parse_twin_version(const char *twinData, bool jsonFromGetTwin)
 
 static int dt_e2e_gettwin_version(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceClientDeviceTwinHandle, IOTHUB_PROVISIONED_DEVICE* deviceToUse)
 {
-    char *twinData = dt_e2e_get_twin(serviceClientDeviceTwinHandle, deviceToUse);
+    char *twinData = dt_e2e_get_twin_from_service(serviceClientDeviceTwinHandle, deviceToUse);
     int version = dt_e2e_parse_twin_version(twinData, true);
 
     // cleanup
@@ -618,17 +635,9 @@ static int dt_e2e_gettwin_version(IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE servi
 void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
 {
     // arrange
-    IOTHUB_PROVISIONED_DEVICE* deviceToUse;
-    if (accountAuthMethod == IOTHUB_ACCOUNT_AUTH_X509)
-    {
-        deviceToUse = IoTHubAccount_GetX509Device(g_iothubAcctInfo);
-    }
-    else
-    {
-        deviceToUse = IoTHubAccount_GetSASDevice(g_iothubAcctInfo);
-    }
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
 
-    DEVICE_DESIRED_DATA *device = device_desired_init();
+    DEVICE_DESIRED_DATA *device = device_desired_data_init();
     ASSERT_IS_NOT_NULL(device, "failed to create the device client data");
 
     dt_e2e_create_client_handle(deviceToUse, protocol);
@@ -637,8 +646,7 @@ void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
     setdevicetwincallback_on_device_or_module(deviceTwinCallback, device);
 
     // Twin registrations to the cloud happen asyncronously because we're using the convenience layer.  There is an (unavoidable)
-    // race potential in tests like this where we create handles and immediately invoke the service SDK.  Namely without this
-    // sleep, we could:
+    // race potential in tests like this where we create handles and immediately invoke the service SDK.  We could:
     // 1 - Register for the full twin (which happens via IoTHubDeviceClient_SetDeviceTwinCallback)
     // 2 - Have the service SDK update the twin (see dt_e2e_update_twin), but it takes a while
     // 3 - The client receives its full twin, which will just be empty data given (2) isn't completed
@@ -647,8 +655,9 @@ void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
     //     the subscribe for PATCH and therefore it doesn't send down the PATCH of the full twin.
     // Apps in field will rarely hit this, as it requries service SDK & client handle to be invoked almost simultaneously.
     // And the client *is* registered for future twin updates on this handle, so it would get future changes.
-    LogInfo("Sleeping for a few seconds as client-side registers with twin");
-    ThreadAPI_Sleep(5000);
+    //
+    // To ensure the test passes: Receive first full twin in the test app. Then sleep so the server can receive
+    // the subscribe for PATCH. Then have the service sdk update the twin on the Hub.
 
     const char *connectionString = IoTHubAccount_GetIoTHubConnString(g_iothubAcctInfo);
     IOTHUB_SERVICE_CLIENT_AUTH_HANDLE iotHubServiceClientHandle = IoTHubServiceClientAuth_CreateFromConnectionString(connectionString);
@@ -659,22 +668,9 @@ void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
 
     int initial_twin_version = dt_e2e_gettwin_version(serviceClientDeviceTwinHandle, deviceToUse);
 
-    char *expected_desired_string = generate_unique_string();
-    int   expected_desired_integer = generate_new_int();
-    char *buffer = malloc_and_fill_desired_payload(expected_desired_string, expected_desired_integer);
-    ASSERT_IS_NOT_NULL(buffer, "failed to create the payload for IoTHubDeviceTwin_UpdateTwin");
-
-    dt_e2e_update_twin(serviceClientDeviceTwinHandle, deviceToUse, buffer);
-
-    JSON_Value *root_value = NULL;
-    const char *string_property = NULL;
-    int integer_property = 0;
-    const char *string_property_from_array = NULL;
-    int integer_property_from_array = 0;
-
+    // Receive first full twin before updating it.
     time_t beginOperation, nowTime;
     beginOperation = time(NULL);
-
     while (
         (nowTime = time(NULL)),
         (difftime(nowTime, beginOperation) < MAX_CLOUD_TRAVEL_TIME) // time box
@@ -691,15 +687,58 @@ void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
                 LogInfo("device->cb_payload: %s", device->cb_payload);
                 int current_version = dt_e2e_parse_twin_version(device->cb_payload, false);
 
-                if (current_version == initial_twin_version)
+                if (current_version != initial_twin_version)
                 {
-                    // There is a potential race where we'll get the callback for deviceTwin availability on the initial twin, not on the
-                    // updated one.  We determine this by looking at $version and if they're the same, it means we haven't got update yet.
-                    LogInfo("The version of twin on callback is identical to initially set (%d).  Waiting for update\n", current_version);
-                    Unlock(device->lock);
-                    ThreadAPI_Sleep(1000);
-                    continue;
+                    ASSERT_FAIL("The version of twin on callback (%d) did not match what was initially set (%d).",
+                                current_version, initial_twin_version);
                 }
+                Unlock(device->lock);
+                break;
+            }
+            Unlock(device->lock);
+        }
+        ThreadAPI_Sleep(1000);
+    }
+
+    ASSERT_IS_TRUE(difftime(nowTime, beginOperation) < MAX_CLOUD_TRAVEL_TIME, "Timeout waiting for twin message");
+
+    // Reset device for update.
+    device_desired_reset(device);
+
+    // Sleep still needed.  Device callback has been recorded in test app, but Hub is still completing twin PATCH subscription.
+    // This must be in place before the service SDK can update the twin, else the Hub will not send the PATCH
+    // message to the device and the desired twin callback will not be called.
+    ThreadAPI_Sleep(5000); // 5 seconds
+
+    char *expected_desired_string = generate_unique_string();
+    int   expected_desired_integer = generate_new_int();
+    char *buffer = malloc_and_fill_desired_payload(expected_desired_string, expected_desired_integer);
+    ASSERT_IS_NOT_NULL(buffer, "failed to create the payload for IoTHubDeviceTwin_UpdateTwin");
+
+    dt_e2e_update_twin(serviceClientDeviceTwinHandle, deviceToUse, buffer);
+
+    JSON_Value *root_value = NULL;
+    const char *string_property = NULL;
+    int integer_property = 0;
+    const char *string_property_from_array = NULL;
+    int integer_property_from_array = 0;
+
+    // Receive twin update via callback.
+    beginOperation = time(NULL);
+    while (
+        (nowTime = time(NULL)),
+        (difftime(nowTime, beginOperation) < MAX_CLOUD_TRAVEL_TIME) // time box
+        )
+    {
+        if (Lock(device->lock) != LOCK_OK)
+        {
+            ASSERT_FAIL("Lock failed");
+        }
+        else
+        {
+            if ((device->receivedCallBack) && (device->cb_payload != NULL))
+            {
+                LogInfo("device->cb_payload: %s", device->cb_payload);
 
                 root_value = json_parse_string(device->cb_payload);
                 if (root_value != NULL)
@@ -777,31 +816,17 @@ void dt_e2e_get_complete_desired_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol,
     }
 }
 
-void dt_e2e_get_twin_async_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
+// request_full_twin_and_wait_for_response requests the full twin from the Hub (using device, NOT service sdk).
+// Verifies that the server sends a response or else times out.
+static void request_full_twin_and_wait_for_response(IOTHUB_PROVISIONED_DEVICE* deviceToUse, DEVICE_DESIRED_DATA *deviceDesiredData)
 {
-    // arrange
-    IOTHUB_PROVISIONED_DEVICE* deviceToUse;
-    if (accountAuthMethod == IOTHUB_ACCOUNT_AUTH_X509)
-    {
-        deviceToUse = IoTHubAccount_GetX509Device(g_iothubAcctInfo);
-    }
-    else
-    {
-        deviceToUse = IoTHubAccount_GetSASDevice(g_iothubAcctInfo);
-    }
-
-    DEVICE_DESIRED_DATA *device = device_desired_init();
-    ASSERT_IS_NOT_NULL(device, "failed to create the device client data");
-
-    dt_e2e_create_client_handle(deviceToUse, protocol);
-
     if (deviceToUse->moduleConnectionString != NULL)
     {
-        ASSERT_ARE_EQUAL(IOTHUB_CLIENT_RESULT, IoTHubModuleClient_GetTwinAsync(iothub_moduleclient_handle, deviceTwinCallback, device), IOTHUB_CLIENT_OK);
+        ASSERT_ARE_EQUAL(IOTHUB_CLIENT_RESULT, IoTHubModuleClient_GetTwinAsync(iothub_moduleclient_handle, deviceTwinCallback, deviceDesiredData), IOTHUB_CLIENT_OK);
     }
     else
     {
-        ASSERT_ARE_EQUAL(IOTHUB_CLIENT_RESULT, IoTHubDeviceClient_GetTwinAsync(iothub_deviceclient_handle, deviceTwinCallback, device), IOTHUB_CLIENT_OK);
+        ASSERT_ARE_EQUAL(IOTHUB_CLIENT_RESULT, IoTHubDeviceClient_GetTwinAsync(iothub_deviceclient_handle, deviceTwinCallback, deviceDesiredData), IOTHUB_CLIENT_OK);
     }
 
     bool callbackReceived = false;
@@ -812,43 +837,97 @@ void dt_e2e_get_twin_async_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHU
         (difftime(nowTime, beginOperation) < MAX_CLOUD_TRAVEL_TIME) // time box
         )
     {
-        if (Lock(device->lock) != LOCK_OK)
+        if (Lock(deviceDesiredData->lock) != LOCK_OK)
         {
             ASSERT_FAIL("Lock failed");
         }
         else
         {
-            if (device->receivedCallBack)
+            if (deviceDesiredData->receivedCallBack)
             {
-                ASSERT_IS_NOT_NULL(device->cb_payload);
-                ASSERT_IS_TRUE(strlen(device->cb_payload) > 0);
-                callbackReceived = device->receivedCallBack;
-                Unlock(device->lock);
+                ASSERT_IS_NOT_NULL(deviceDesiredData->cb_payload);
+                ASSERT_IS_TRUE(strlen(deviceDesiredData->cb_payload) > 0);
+                callbackReceived = deviceDesiredData->receivedCallBack;
+                Unlock(deviceDesiredData->lock);
                 break;
             }
-            Unlock(device->lock);
+            Unlock(deviceDesiredData->lock);
         }
         ThreadAPI_Sleep(1000);
     }
-    ASSERT_IS_TRUE(callbackReceived, "Did not receive the GetTwinAsync call back");    
+    ASSERT_IS_TRUE(callbackReceived, "Did not receive the GetTwinAsync call back");
+}
+
+void dt_e2e_get_twin_async_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
+{
+    // arrange
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
+
+    DEVICE_DESIRED_DATA *deviceDesiredData = device_desired_data_init();
+    ASSERT_IS_NOT_NULL(deviceDesiredData, "failed to create the device client data");
+
+    dt_e2e_create_client_handle(deviceToUse, protocol);
+
+    request_full_twin_and_wait_for_response(deviceToUse, deviceDesiredData);
 
     // cleanup
     destroy_on_device_or_module();
-    device_desired_deinit(device);
+    device_desired_deinit(deviceDesiredData);
 }
+
+// dt_e2e_send_module_id_test makes sure that when OPTION_MODEL_ID is specified at creation time, then
+// the Service Twin has it specified.
+void dt_e2e_send_module_id_test(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod, const char* modelId)
+{
+    // arrange
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
+
+    DEVICE_DESIRED_DATA *deviceDesiredData = device_desired_data_init();
+    ASSERT_IS_NOT_NULL(deviceDesiredData, "failed to create the device client data");
+
+    dt_e2e_create_client_handle(deviceToUse, protocol);
+    // Set the ModelId prior to any network I/O.  The caller passes the modelId because the the modelId
+    // is persisted on the Hub after initial set.  So to truly test that the modelId is sent across on
+    // each test, we need to have the caller change it on each invocation of this test helper.
+    setoption_on_device_or_module(OPTION_MODEL_ID, modelId, "Cannot specify modelId");
+
+    // We do not use the returned device twin, which doesn't contain the device's ModelId.  However this step
+    // is still necessary because just creating a device client handle will not initiate network I/O so we
+    // need some mechanism to make sure we've successfully established a connection to IoT Hub.
+    request_full_twin_and_wait_for_response(deviceToUse, deviceDesiredData);
+
+    const char *connectionString = IoTHubAccount_GetIoTHubConnString(g_iothubAcctInfo);
+    IOTHUB_SERVICE_CLIENT_AUTH_HANDLE iotHubServiceClientHandle = IoTHubServiceClientAuth_CreateFromConnectionString(connectionString);
+    ASSERT_IS_NOT_NULL(iotHubServiceClientHandle, "IoTHubServiceClientAuth_CreateFromConnectionString failed");
+
+    IOTHUB_SERVICE_CLIENT_DEVICE_TWIN_HANDLE serviceClientDeviceTwinHandle = IoTHubDeviceTwin_Create(iotHubServiceClientHandle);
+    ASSERT_IS_NOT_NULL(serviceClientDeviceTwinHandle, "IoTHubDeviceTwin_Create failed");
+
+    char *twinData = dt_e2e_get_twin_from_service(serviceClientDeviceTwinHandle, deviceToUse);
+
+    IoTHubDeviceTwin_Destroy(serviceClientDeviceTwinHandle);
+    IoTHubServiceClientAuth_Destroy(iotHubServiceClientHandle);
+    destroy_on_device_or_module();
+    device_desired_deinit(deviceDesiredData);
+
+    JSON_Value *rootValue = json_parse_string(twinData);
+    ASSERT_IS_NOT_NULL(rootValue);
+    JSON_Object *rootObject = json_value_get_object(rootValue);
+    ASSERT_IS_NOT_NULL(rootObject);
+    const char* modelIdOnService = json_object_dotget_string(rootObject, "modelId");
+
+    ASSERT_ARE_EQUAL(char_ptr, modelId, modelIdOnService);
+
+    // cleanup
+    json_value_free(rootValue);
+    free(twinData);
+}
+
 
 void dt_e2e_send_reported_test_svc_fault_ctrl_kill_Tcp(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
 {
     // arrange
-    IOTHUB_PROVISIONED_DEVICE* deviceToUse;
-    if (accountAuthMethod == IOTHUB_ACCOUNT_AUTH_X509)
-    {
-        deviceToUse = IoTHubAccount_GetX509Device(g_iothubAcctInfo);
-    }
-    else
-    {
-        deviceToUse = IoTHubAccount_GetSASDevice(g_iothubAcctInfo);
-    }
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
 
     DEVICE_REPORTED_DATA *device = device_reported_init();
     ASSERT_IS_NOT_NULL(device, "failed to create the device client data");
@@ -908,7 +987,7 @@ void dt_e2e_send_reported_test_svc_fault_ctrl_kill_Tcp(IOTHUB_CLIENT_TRANSPORT_P
         ASSERT_FAIL("Map_AddOrUpdate failed for AzIoTHub_FaultOperationDelayInSecs!");
     }
     (void)printf("Send fault control message...\r\n");
-    client_create_with_properies_and_send_d2c(propMap);
+    client_create_with_properies_and_send_d2c(deviceToUse, propMap);
     Map_Destroy(propMap);
 
     ThreadAPI_Sleep(3000);
@@ -951,17 +1030,9 @@ void dt_e2e_send_reported_test_svc_fault_ctrl_kill_Tcp(IOTHUB_CLIENT_TRANSPORT_P
 void dt_e2e_get_complete_desired_test_svc_fault_ctrl_kill_Tcp(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol, IOTHUB_ACCOUNT_AUTH_METHOD accountAuthMethod)
 {
     // arrange
-    IOTHUB_PROVISIONED_DEVICE* deviceToUse;
-    if (accountAuthMethod == IOTHUB_ACCOUNT_AUTH_X509)
-    {
-        deviceToUse = IoTHubAccount_GetX509Device(g_iothubAcctInfo);
-    }
-    else
-    {
-        deviceToUse = IoTHubAccount_GetSASDevice(g_iothubAcctInfo);
-    }
+    IOTHUB_PROVISIONED_DEVICE* deviceToUse = IoTHubAccount_GetDevice(g_iothubAcctInfo, accountAuthMethod);
 
-    DEVICE_DESIRED_DATA *device = device_desired_init();
+    DEVICE_DESIRED_DATA *device = device_desired_data_init();
     ASSERT_IS_NOT_NULL(device, "failed to create the device client data");
 
     // Create the IoT Hub Data
@@ -1029,7 +1100,7 @@ void dt_e2e_get_complete_desired_test_svc_fault_ctrl_kill_Tcp(IOTHUB_CLIENT_TRAN
         ASSERT_FAIL("Map_AddOrUpdate failed for AzIoTHub_FaultOperationDelayInSecs!");
     }
     (void)printf("Send fault control message...\r\n");
-    client_create_with_properies_and_send_d2c(propMap);
+    client_create_with_properies_and_send_d2c(deviceToUse, propMap);
     Map_Destroy(propMap);
 
     ThreadAPI_Sleep(3000);

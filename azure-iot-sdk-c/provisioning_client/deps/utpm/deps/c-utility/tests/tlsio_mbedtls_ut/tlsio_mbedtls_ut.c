@@ -574,7 +574,6 @@ BEGIN_TEST_SUITE(tlsio_mbedtls_ut)
         STRICT_EXPECTED_CALL(mbedtls_pk_free(IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(mbedtls_ctr_drbg_free(IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(mbedtls_entropy_free(IGNORED_PTR_ARG));
-        STRICT_EXPECTED_CALL(xio_close(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(xio_destroy(IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(gballoc_free(IGNORED_NUM_ARG));
@@ -880,6 +879,7 @@ BEGIN_TEST_SUITE(tlsio_mbedtls_ut)
         tls_io_config.port = TEST_CONNECTION_PORT;
         tls_io_config.underlying_io_interface = TEST_INTERFACE_DESC;
         tls_io_config.underlying_io_parameters = NULL;
+        tls_io_config.invoke_on_send_complete_callback_for_fragments = false;
         CONCRETE_IO_HANDLE handle = tlsio_mbedtls_create(&tls_io_config);
         (void)tlsio_mbedtls_open(handle, on_io_open_complete, NULL, on_bytes_received, NULL, on_io_error, NULL);
         g_open_complete(g_open_complete_ctx, IO_OPEN_OK);
@@ -923,6 +923,7 @@ BEGIN_TEST_SUITE(tlsio_mbedtls_ut)
         tls_io_config.port = TEST_CONNECTION_PORT;
         tls_io_config.underlying_io_interface = TEST_INTERFACE_DESC;
         tls_io_config.underlying_io_parameters = NULL;
+        tls_io_config.invoke_on_send_complete_callback_for_fragments = false;
         CONCRETE_IO_HANDLE handle = tlsio_mbedtls_create(&tls_io_config);
         (void)tlsio_mbedtls_open(handle, on_io_open_complete, NULL, on_bytes_received, NULL, on_io_error, NULL);
         g_open_complete(g_open_complete_ctx, IO_OPEN_OK);

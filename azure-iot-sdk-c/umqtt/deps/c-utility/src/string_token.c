@@ -9,6 +9,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/string_token.h"
+#include "azure_c_shared_utility/safe_math.h"
 
 typedef struct STRING_TOKEN_TAG
 {
@@ -22,9 +23,14 @@ typedef struct STRING_TOKEN_TAG
 
 static size_t* get_delimiters_lengths(const char** delimiters, size_t n_delims)
 {
+    size_t malloc_size = safe_multiply_size_t(sizeof(size_t), n_delims);
     size_t* result;
-
-    if ((result = malloc(sizeof(size_t) * n_delims)) == NULL)
+    if (malloc_size == SIZE_MAX)
+    {
+        LogError("malloc size overflow");
+        result = NULL;
+    }
+    else if ((result = malloc(malloc_size)) == NULL)
     {
         LogError("Failed to allocate array for delimiters lengths");
     }
@@ -41,7 +47,14 @@ static size_t* get_delimiters_lengths(const char** delimiters, size_t n_delims)
                 result = NULL;
                 break;
             }
-            else
+            else if (((i+1) * sizeof(size_t)) > malloc_size)
+            {
+                LogError("buffer overflow");
+                free(result);
+                result = NULL;
+                break;
+            }
+            else 
             {
                 result[i] = strlen(delimiters[i]);
             }

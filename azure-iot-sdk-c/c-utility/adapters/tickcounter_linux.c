@@ -12,7 +12,7 @@
 
 typedef struct TICK_COUNTER_INSTANCE_TAG
 {
-    time_t init_time_value;
+    int64_t init_time_value;
     tickcounter_ms_t current_ms;
 } TICK_COUNTER_INSTANCE;
 
@@ -57,7 +57,7 @@ int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_
     }
     else
     {
-        time_t time_value = get_time_ms();
+        int64_t time_value = get_time_ms();
         if (time_value == INVALID_TIME_VALUE)
         {
             result = MU_FAILURE;
@@ -65,7 +65,7 @@ int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_
         else
         {
             TICK_COUNTER_INSTANCE* tick_counter_instance = (TICK_COUNTER_INSTANCE*)tick_counter;
-            tick_counter_instance->current_ms = (tickcounter_ms_t)(difftime(time_value, tick_counter_instance->init_time_value));
+            tick_counter_instance->current_ms = (tickcounter_ms_t) time_value - tick_counter_instance->init_time_value;
             *current_ms = tick_counter_instance->current_ms;
             result = 0;
         }

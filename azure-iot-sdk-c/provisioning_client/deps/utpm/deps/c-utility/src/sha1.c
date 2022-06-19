@@ -144,17 +144,24 @@ int SHA1Input(SHA1Context *context, const uint8_t *message_array, unsigned int l
     }
     else
     {
-        while (length-- && !context->Corrupted)
+        while (length-- && !context->Corrupted) //shaInputTooLong
         {
-            context->Message_Block[context->Message_Block_Index++] = (*message_array & 0xFF);
-
-            if (!SHA1AddLength(context, 8) && (context->Message_Block_Index == SHA1_Message_Block_Size))
+            if (context->Message_Block_Index < SHA1_Message_Block_Size)
             {
-                SHA1ProcessMessageBlock(context);
+                context->Message_Block[context->Message_Block_Index++] = (*message_array & 0xFF);
+
+                if (!SHA1AddLength(context, 8) && (context->Message_Block_Index == SHA1_Message_Block_Size))
+                {
+                    SHA1ProcessMessageBlock(context);
+                }
+                message_array++;
             }
-            message_array++;
+            else
+            {
+                result = context->Corrupted = shaBadParam;
+            }
         }
-        result = shaSuccess;
+        result = context->Corrupted;
     }
     return result;
 }

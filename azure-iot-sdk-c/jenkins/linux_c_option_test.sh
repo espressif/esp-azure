@@ -1,10 +1,11 @@
 #!/bin/bash
-#set -o pipefail
-#
 # Copyright (c) Microsoft. All rights reserved.
 # Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-set -e
+set -x # Set trace on
+set -o errexit # Exit if command failed
+set -o nounset # Exit if variable not set
+set -o pipefail # Exit if pipe failed
 
 cat /etc/*release | grep VERSION*
 gcc --version
@@ -12,7 +13,7 @@ openssl version
 
 script_dir=$(cd "$(dirname "$0")" && pwd)
 build_root=$(cd "${script_dir}/.." && pwd)
-build_folder=$build_root"/cmake/iot_option"
+build_folder=$build_root"/cmake"
 
 # Set the default cores
 MAKE_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
@@ -35,7 +36,7 @@ MAKE_CORES=1
 fi
 
 echo "Create custom HSM library for later"
-hsm_folder=$build_root"/cmake/cust_hsm"
+hsm_folder=$build_root"/build_cust_hsm"
 rm -r -f $hsm_folder
 mkdir -p $hsm_folder
 pushd $hsm_folder
@@ -56,7 +57,8 @@ declare -a arr=(
     "-Drun_longhaul_tests=ON"
     "-Duse_prov_client=ON -Dhsm_custom_lib=$custom_hsm_lib"
     "-Drun_e2e_tests=ON -Drun_sfc_tests=ON -Duse_edge_modules=ON"
-    "-Drun_e2e_tests=ON -Duse_baltimore_cert=ON"
+    "-Drun_e2e_tests=ON -Duse_azure_cloud_rsa_cert=ON"
+    "-Drun_e2e_tests=ON -Duse_azure_cloud_ecc_cert=ON"
     "-Duse_prov_client:BOOL=ON -Dhsm_type_symm_key:BOOL=ON"
     "-Duse_prov_client:BOOL=ON -Dhsm_type_x509:BOOL=ON"
     "-Duse_prov_client:BOOL=ON -Dhsm_type_sastoken:BOOL=ON"

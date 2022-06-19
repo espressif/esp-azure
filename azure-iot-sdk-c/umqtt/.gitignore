@@ -9,3 +9,5 @@
 *.jar
 
 /.vscode/*
+/.vs
+/out/build

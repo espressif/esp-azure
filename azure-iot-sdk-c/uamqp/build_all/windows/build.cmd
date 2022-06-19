@@ -104,70 +104,78 @@ mkdir %build-root%\cmake\%CMAKE_DIR%
 rem no error checking
 pushd %build-root%\cmake\%CMAKE_DIR%
 
+echo ***checking msbuild***
+where /q msbuild
+IF ERRORLEVEL 1 (
+echo ***setting VC paths***
+    IF EXIST "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat" call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat"
+)
+where msbuild
+
 if %MAKE_NUGET_PKG% == yes (
     echo ***Running CMAKE for Win32***
-    cmake %build-root% 
+    cmake %build-root%
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
     popd
-    
+
     echo ***Running CMAKE for Win64***
     if EXIST %build-root%\cmake\uamqp_x64 (
         rmdir /s/q %build-root%\cmake\uamqp_x64
     )
     mkdir %build-root%\cmake\uamqp_x64
     pushd %build-root%\cmake\uamqp_x64
-    cmake %build-root% -G "Visual Studio 14 Win64" 
+    cmake %build-root% -G "Visual Studio 15 2017" -A x64
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
     popd
-    
+
     echo ***Running CMAKE for ARM***
     if EXIST %build-root%\cmake\uamqp_arm (
         rmdir /s/q %build-root%\cmake\uamqp_arm
-    )    
+    )
     mkdir %build-root%\cmake\uamqp_arm
     pushd %build-root%\cmake\uamqp_arm
-    cmake %build-root% -G "Visual Studio 14 ARM" 
+    cmake %build-root% -G "Visual Studio 15 2017" -A ARM
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
-    
+
 ) else if %build-platform% == Win32 (
-    echo ***Running CMAKE for Win32***   
-    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON 
+    echo ***Running CMAKE for Win32***
+    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON -G "Visual Studio 15 2017" -A Win32
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 ) else if %build-platform% == arm (
     echo ***Running CMAKE for ARM***
-    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON -G "Visual Studio 14 ARM" 
+    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON -G "Visual Studio 15 2017" -A ARM
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 ) else (
-    echo ***Running CMAKE for Win64***    
-    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON -G "Visual Studio 14 Win64" 
+    echo ***Running CMAKE for Win64***
+    cmake %build-root% -Drun_unittests:BOOL=ON -Drun_e2e_tests:BOOL=ON -G "Visual Studio 15 2017" -A x64
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 )
 
 if %MAKE_NUGET_PKG% == yes (
-    echo ***Building all configurations***    
+    echo ***Building all configurations***
     msbuild /m %build-root%\cmake\uamqp_win32\uamqp.sln /p:Configuration=Release
     msbuild /m %build-root%\cmake\uamqp_win32\uamqp.sln /p:Configuration=Debug
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
-    
+
     msbuild /m %build-root%\cmake\uamqp_x64\uamqp.sln /p:Configuration=Release
     msbuild /m %build-root%\cmake\uamqp_x64\uamqp.sln /p:Configuration=Debug
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 
     msbuild /m %build-root%\cmake\uamqp_arm\uamqp.sln /p:Configuration=Release
     msbuild /m %build-root%\cmake\uamqp_arm\uamqp.sln /p:Configuration=Debug
-    if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!    
+    if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 ) else (
     call :_run-msbuild "Build" uamqp.sln %2 %3
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
-    
+
     if %build-platform% neq arm (
         echo Build Platform: %build-platform%
-        
+
         if "%build-config%" == "Debug" (
             ctest -C "debug" -V
             if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
         )
-    )    
+    )
 )
 popd
 goto :eof

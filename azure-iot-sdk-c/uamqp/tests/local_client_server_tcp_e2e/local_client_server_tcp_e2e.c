@@ -1475,7 +1475,8 @@ TEST_FUNCTION(client_and_server_connect_and_send_one_message_with_all_message_pa
     delivery_annotations delivery_annotations_map;
     AMQP_VALUE delivery_annotations_key_1;
     AMQP_VALUE delivery_annotations_value_1;
-    message_annotations message_annotations_map;
+    AMQP_VALUE message_annotations_map;
+    message_annotations message_annotations_instance;
     AMQP_VALUE message_annotations_key_1;
     AMQP_VALUE message_annotations_value_1;
     PROPERTIES_HANDLE message_properties;
@@ -1571,8 +1572,11 @@ TEST_FUNCTION(client_and_server_connect_and_send_one_message_with_all_message_pa
     ASSERT_IS_NOT_NULL(message_annotations_value_1, "Could not create message annotations value 1");
     result = amqpvalue_set_map_value(message_annotations_map, message_annotations_key_1, message_annotations_value_1);
     ASSERT_ARE_EQUAL(int, 0, result, "cannot set value in message annotations map");
-    result = message_set_message_annotations(client_send_message, message_annotations_map);
+    message_annotations_instance = (message_annotations)amqpvalue_create_message_annotations(message_annotations_map);
+    ASSERT_IS_NOT_NULL(message_annotations_instance, "Could not create message annotations");
+    result = message_set_message_annotations(client_send_message, message_annotations_instance);
     ASSERT_ARE_EQUAL(int, 0, result, "cannot set message annotations");
+    annotations_destroy(message_annotations_instance);
     amqpvalue_destroy(message_annotations_map);
     amqpvalue_destroy(message_annotations_key_1);
     amqpvalue_destroy(message_annotations_value_1);

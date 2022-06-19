@@ -49,7 +49,7 @@ printf("PartitionId = %" GUID_FORMAT "\n", GUID_VALUES(fabricDeployedStatefulSer
 PartitionId=316132b8-96a0-4bc7-aecc-a16e7c5a6bf6
 */
 #define GUID_FORMAT "8.8" PRIx32 "-%4.4" PRIx16 "-%4.4" PRIx16 "-%4.4" PRIx16 "-%12.12" PRIx64
-#define GUID_VALUES(guid) (guid).Data1, (guid).Data2, (guid).Data3, ((guid).Data4[0]<<8) + (guid).Data4[1], ((uint64_t)((guid).Data4[2])<<40) + ((uint64_t)((guid).Data4[3])<<32) + (((uint64_t)(guid).Data4[4])<<24) + ((guid).Data4[5]<<16) + ((guid).Data4[6]<<8) + ((guid).Data4[7])
+#define GUID_VALUES(guid) (guid).Data1, (guid).Data2, (guid).Data3, (unsigned int)((((uint64_t)(guid).Data4[0]))<<8) + (guid).Data4[1], (((uint64_t)((guid).Data4[2]))<<40) + (((uint64_t)((guid).Data4[3]))<<32) + (((uint64_t)((guid).Data4[4]))<<24) + (((uint64_t)((guid).Data4[5]))<<16) + (((uint64_t)((guid).Data4[6]))<<8) + ((guid).Data4[7])
 
 /*takes a FILETIME, returns a nice string representation of it*/
 char* FILETIME_toAsciiArray(const FILETIME* fileTime);

@@ -2,7 +2,10 @@
 # Copyright (c) Microsoft. All rights reserved.
 # Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-set -e
+set -x # Set trace on
+set -o errexit # Exit if command failed
+set -o nounset # Exit if variable not set
+set -o pipefail # Exit if pipe failed
 
 # Print version
 cat /etc/*release | grep VERSION*
@@ -17,7 +20,7 @@ cd $build_root
 
 echo "Build Root $build_root"
 
-sdk_build_folder=$build_root"/cmake/install_deps"
+sdk_build_folder=$build_root"/cmake"
 
 # Build the SDK
 rm -rf $sdk_build_folder

@@ -7,6 +7,7 @@
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_uamqp_c/sasl_plain.h"
+#include "azure_c_shared_utility/safe_math.h"
 
 typedef struct SASL_PLAIN_INSTANCE_TAG
 {
@@ -66,8 +67,17 @@ CONCRETE_SASL_MECHANISM_HANDLE saslplain_create(void* config)
                 else
                 {
                     /* Ignore UTF8 for now */
-                    result->init_bytes = (unsigned char*)malloc(authzid_length + authcid_length + passwd_length + 2);
-                    if (result->init_bytes == NULL)
+                    //size_t malloc_size = authzid_length + authcid_length + passwd_length + 2);  // use safe add
+                    size_t malloc_size = safe_add_size_t(authzid_length, authcid_length);
+                    malloc_size = safe_add_size_t(malloc_size, passwd_length);
+                    malloc_size = safe_add_size_t(malloc_size, 2);
+
+                    if (malloc_size == SIZE_MAX)
+                    {
+                        LogError("malloc size overflow");
+                        result = NULL;
+                    }
+                    else if ((result->init_bytes = (unsigned char*)malloc(malloc_size)) == NULL)
                     {
                         /* Codes_SRS_SASL_PLAIN_01_002: [If allocating the memory needed for the saslplain instance fails then `saslplain_create` shall return NULL.] */
                         LogError("Cannot allocate init bytes");
@@ -88,11 +98,22 @@ CONCRETE_SASL_MECHANISM_HANDLE saslplain_create(void* config)
                             (void)memcpy(result->init_bytes, sasl_plain_config->authzid, authzid_length);
                         }
 
-                        result->init_bytes[authzid_length] = 0;
-                        (void)memcpy(result->init_bytes + authzid_length + 1, sasl_plain_config->authcid, authcid_length);
-                        result->init_bytes[authzid_length + authcid_length + 1] = 0;
-                        (void)memcpy(result->init_bytes + authzid_length + authcid_length + 2, sasl_plain_config->passwd, passwd_length);
-                        result->init_bytes_length = (uint32_t)(authzid_length + authcid_length + passwd_length + 2);
+                        size_t init_bytes_length = safe_add_size_t(safe_add_size_t(authzid_length, authcid_length), 1);
+                        if (authzid_length < malloc_size && init_bytes_length < malloc_size)
+                        {
+                            result->init_bytes[authzid_length] = 0;
+                            (void)memcpy(result->init_bytes + authzid_length + 1, sasl_plain_config->authcid, authcid_length);
+                            result->init_bytes[init_bytes_length] = 0;
+                            (void)memcpy(result->init_bytes + authzid_length + authcid_length + 2, sasl_plain_config->passwd, passwd_length);
+                            result->init_bytes_length = (uint32_t)(authzid_length + authcid_length + passwd_length + 2);
+                        }
+                        else
+                        {
+                            LogError("invalid buffer size");
+                            free(result->init_bytes);
+                            free(result);
+                            result = NULL;
+                        }
                     }
                 }
             }

@@ -18,7 +18,7 @@ typedef struct CONSTBUFFER_ARRAY_HANDLE_DATA_TAG
     bool created_with_moved_memory;
     CONSTBUFFER_HANDLE* buffers;
 #ifdef _MSC_VER
-    /*warning C4200: nonstandard extension used: zero-sized array in struct/union : looks very standard in C99 and it is called flexible array. Documentation-wise is a flexible array, but called "unsized" in Microsoft's docs*/ /*https://msdn.microsoft.com/en-us/library/b6fae073.aspx*/
+    /*warning C4200: nonstandard extension used: zero-sized array in struct/union : looks very standard in C99 and it is called flexible array. Documentation-wise is a flexible array, but called "unsized" in Microsoft's docs*/ /*https://msdn.microsoft.com/library/b6fae073.aspx*/
 #pragma warning(disable:4200)
 #endif
     CONSTBUFFER_HANDLE buffers_memory[];
@@ -478,18 +478,21 @@ IMPLEMENT_MOCKABLE_FUNCTION(, int, constbuffer_array_get_all_buffers_size, CONST
         for (i = 0; i < constbuffer_array_handle->nBuffers; i++)
         {
             const CONSTBUFFER* content = CONSTBUFFER_GetContent(constbuffer_array_handle->buffers[i]);
+            if (content != NULL)
+            {
 #if SIZE_MAX > UINT32_MAX
-            if (content->size > UINT32_MAX)
-            {
-                break;
-            }
+                if (content->size > UINT32_MAX)
+                {
+                    break;
+                }
 #endif
-            if (total_size + (uint32_t)content->size < total_size)
-            {
-                break;
-            }
+                if (total_size + (uint32_t)content->size < total_size)
+                {
+                    break;
+                }
 
-            total_size += (uint32_t)content->size;
+                total_size += (uint32_t)content->size;
+            }
         }
 
         if (i < constbuffer_array_handle->nBuffers)

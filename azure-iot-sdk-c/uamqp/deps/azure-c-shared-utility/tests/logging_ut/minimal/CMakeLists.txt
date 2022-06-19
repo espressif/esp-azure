@@ -17,6 +17,7 @@ else()
     set(LOGGING_STACKTRACE_H_FILE)
 endif()
 
+    add_definitions(-DLOGGER_DISABLE_PAL)
 if (${use_etw} STREQUAL "TRACELOGGING")
     add_definitions(-DUSE_TRACELOGGING)
 endif()

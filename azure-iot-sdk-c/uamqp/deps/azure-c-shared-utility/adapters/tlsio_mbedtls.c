@@ -72,6 +72,7 @@ typedef struct TLS_IO_INSTANCE_TAG
     mbedtls_ssl_session ssn;
     char *trusted_certificates;
 
+    bool invoke_on_send_complete_callback_for_fragments;
     char *hostname;
     mbedtls_x509_crt owncert;
     mbedtls_pk_context pKey;
@@ -373,12 +374,14 @@ static void on_send_complete(void* context, IO_SEND_RESULT send_result)
         if (tls_io_instance->send_complete_info.on_send_complete != NULL &&
             tls_io_instance->tlsio_state != TLSIO_STATE_CLOSING)
         {
-            // trigger callback always on failure, otherwise call it on last fragment completion
-            if (send_result != IO_SEND_OK || !tls_io_instance->send_complete_info.is_fragmented_req)
-            {
+        	// trigger callback always on failure, otherwise call it on last fragment completion
+        	// In case of http communication (ie blob upload), the callback is called with each fragment
+        	if((tls_io_instance->invoke_on_send_complete_callback_for_fragments && tls_io_instance->send_complete_info.is_fragmented_req)||
+        			(send_result != IO_SEND_OK || !tls_io_instance->send_complete_info.is_fragmented_req))
+        	{
                 void *ctx = tls_io_instance->send_complete_info.on_send_complete_callback_context;
                 tls_io_instance->send_complete_info.on_send_complete(ctx, send_result);
-            }
+        	}
         }
     }
     else
@@ -558,6 +561,7 @@ CONCRETE_IO_HANDLE tlsio_mbedtls_create(void *io_create_parameters)
                     result->tls_status = TLS_STATE_NOT_INITIALIZED;
                     mbedtls_init((void*)result);
                     result->tlsio_state = TLSIO_STATE_NOT_OPEN;
+                    result->invoke_on_send_complete_callback_for_fragments = tls_io_config->invoke_on_send_complete_callback_for_fragments;
                 }
             }
         }
@@ -576,8 +580,6 @@ void tlsio_mbedtls_destroy(CONCRETE_IO_HANDLE tls_io)
         TLS_IO_INSTANCE *tls_io_instance = (TLS_IO_INSTANCE *)tls_io;
 
         mbedtls_uninit(tls_io_instance);
-
-        xio_close(tls_io_instance->socket_io, NULL, NULL);
 
         if (tls_io_instance->socket_io_read_bytes != NULL)
         {
@@ -775,7 +777,6 @@ void tlsio_mbedtls_dowork(CONCRETE_IO_HANDLE tls_io)
         if (tls_io_instance->tlsio_state == TLSIO_STATE_IN_HANDSHAKE || tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
         {
             decode_ssl_received_bytes(tls_io_instance);
-            // Note: no need to call xio_dowork here because it's called in on_io_recv which is the callback function of decode_ssl_received_bytes
         }
 
         xio_dowork(tls_io_instance->socket_io);
@@ -795,7 +796,7 @@ static void *tlsio_mbedtls_CloneOption(const char *name, const void *value)
     {
         if (strcmp(name, OPTION_UNDERLYING_IO_OPTIONS) == 0)
         {
-            result = (void *)value;
+            result = (void*)OptionHandler_Clone((OPTIONHANDLER_HANDLE)value);
         }
         else if (strcmp(name, OPTION_TRUSTED_CERT) == 0)
         {
@@ -1059,39 +1060,48 @@ OPTIONHANDLER_HANDLE tlsio_mbedtls_retrieveoptions(CONCRETE_IO_HANDLE handle)
             TLS_IO_INSTANCE *tls_io_instance = (TLS_IO_INSTANCE *)handle;
             OPTIONHANDLER_HANDLE underlying_io_options;
 
-            if ((underlying_io_options = xio_retrieveoptions(tls_io_instance->socket_io)) == NULL ||
-                OptionHandler_AddOption(result, OPTION_UNDERLYING_IO_OPTIONS, underlying_io_options) != OPTIONHANDLER_OK)
+            if ((underlying_io_options = xio_retrieveoptions(tls_io_instance->socket_io)) == NULL)
             {
-                LogError("unable to save underlying_io options");
-                OptionHandler_Destroy(underlying_io_options);
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->trusted_certificates != NULL &&
-                     OptionHandler_AddOption(result, OPTION_TRUSTED_CERT, tls_io_instance->trusted_certificates) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save TrustedCerts option");
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->x509_certificate != NULL &&
-                     OptionHandler_AddOption(result, SU_OPTION_X509_CERT, tls_io_instance->x509_certificate) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save x509certificate option");
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->x509_private_key != NULL &&
-                     OptionHandler_AddOption(result, SU_OPTION_X509_PRIVATE_KEY, tls_io_instance->x509_private_key) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save x509privatekey option");
+                LogError("unable to retrieve underlying_io options");
                 OptionHandler_Destroy(result);
                 result = NULL;
             }
             else
-            {
-                // all is fine, all interesting options have been saved
-                // return as is
+            { 
+                if (OptionHandler_AddOption(result, OPTION_UNDERLYING_IO_OPTIONS, underlying_io_options) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save underlying_io options");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->trusted_certificates != NULL &&
+                         OptionHandler_AddOption(result, OPTION_TRUSTED_CERT, tls_io_instance->trusted_certificates) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save TrustedCerts option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->x509_certificate != NULL &&
+                         OptionHandler_AddOption(result, SU_OPTION_X509_CERT, tls_io_instance->x509_certificate) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save x509certificate option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->x509_private_key != NULL &&
+                         OptionHandler_AddOption(result, SU_OPTION_X509_PRIVATE_KEY, tls_io_instance->x509_private_key) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save x509privatekey option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else
+                {
+                    // all is fine, all interesting options have been saved
+                    // return as is
+                }
+
+                OptionHandler_Destroy(underlying_io_options);
             }
         }
     }

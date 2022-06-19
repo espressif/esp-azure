@@ -257,7 +257,7 @@ static CURLcode ssl_ctx_callback(CURL *curl, void *ssl_ctx, void *userptr)
         /*trying to set the x509 per device certificate*/
         if (
             (httpHandleData->x509certificate != NULL) && (httpHandleData->x509privatekey != NULL) &&
-            (x509_openssl_add_credentials(ssl_ctx, httpHandleData->x509certificate, httpHandleData->x509privatekey) != 0)
+            (x509_openssl_add_credentials(ssl_ctx, httpHandleData->x509certificate, httpHandleData->x509privatekey, KEY_TYPE_DEFAULT, NULL) != 0)
            )
         {
             LogError("unable to x509_openssl_add_credentials");
@@ -904,6 +904,27 @@ HTTPAPI_RESULT HTTPAPI_SetOption(HTTP_HANDLE handle, const char* optionName, con
                 }
             }
         }
+        else if (strcmp(OPTION_CURL_INTERFACE, optionName) == 0)
+        {
+            const char *interfaceName = (const char*)value;
+            if (interfaceName != NULL && interfaceName[0] != '\0')
+            {
+                if (curl_easy_setopt(httpHandleData->curl, CURLOPT_INTERFACE, interfaceName) != CURLE_OK)
+                {
+                    LogError("unable to curl_easy_setopt for CURLOPT_INTERFACE");
+                    result = HTTPAPI_ERROR;
+                }
+                else
+                {
+                    result = HTTPAPI_OK;
+                }
+            }
+            else
+            {
+                LogError("unable to curl_easy_setopt for CURLOPT_INTERFACE option as option-value is invalid/empty");
+                result = HTTPAPI_ERROR;
+            }
+        }
         else
         {
             result = HTTPAPI_INVALID_ARG;
@@ -1025,6 +1046,19 @@ HTTPAPI_RESULT HTTPAPI_CloneOption(const char* optionName, const void* value, co
             {
                 *temp = *(const long*)value;
                 *savedValue = temp;
+                result = HTTPAPI_OK;
+            }
+        }
+        else if (strcmp(OPTION_CURL_INTERFACE, optionName) == 0)
+        {
+            if (mallocAndStrcpy_s((char**)savedValue, value) != 0)
+            {
+                LogError("unable to clone the interface name");
+                result = HTTPAPI_ERROR;
+            }
+            else
+            {
+                /*return OK when the interface name has been cloned successfully*/
                 result = HTTPAPI_OK;
             }
         }

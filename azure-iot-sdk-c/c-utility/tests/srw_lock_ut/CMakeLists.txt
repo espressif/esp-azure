@@ -1,13 +1,10 @@
 #Copyright (c) Microsoft. All rights reserved.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
-compileAsC11()
 set(theseTestsName srw_lock_ut)
 
-set(${theseTestsName}_test_files
-${theseTestsName}.c
-)
+generate_cppunittest_wrapper(${theseTestsName})
 
 set(${theseTestsName}_c_files
 srw_lock_mocked.c

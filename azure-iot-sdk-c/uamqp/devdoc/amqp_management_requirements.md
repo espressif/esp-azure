@@ -31,7 +31,7 @@ DEFINE_ENUM(AMQP_MANAGEMENT_OPEN_RESULT, AMQP_MANAGEMENT_OPEN_RESULT_VALUES)
     MOCKABLE_FUNCTION(, void, amqp_management_destroy, AMQP_MANAGEMENT_HANDLE, amqp_management);
     MOCKABLE_FUNCTION(, int, amqp_management_open_async, AMQP_MANAGEMENT_HANDLE, amqp_management, ON_AMQP_MANAGEMENT_OPEN_COMPLETE, on_amqp_management_open_complete, void*, on_amqp_management_open_complete_context, ON_AMQP_MANAGEMENT_ERROR, on_amqp_management_error, void*, on_amqp_management_error_context);
     MOCKABLE_FUNCTION(, int, amqp_management_close, AMQP_MANAGEMENT_HANDLE, amqp_management);
-    MOCKABLE_FUNCTION(, int, amqp_management_execute_operation_async, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, operation, const char*, type, const char*, locales, MESSAGE_HANDLE, message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE, on_execute_operation_complete, void*, context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, amqp_management_execute_operation_async, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, operation, const char*, type, const char*, locales, MESSAGE_HANDLE, message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE, on_execute_operation_complete, void*, context);
     MOCKABLE_FUNCTION(, void, amqp_management_set_trace, AMQP_MANAGEMENT_HANDLE, amqp_management, bool, trace_on);
     MOCKABLE_FUNCTION(, int, amqp_management_set_override_status_code_key_name, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, override_status_code_key_name);
     MOCKABLE_FUNCTION(, int, amqp_management_set_override_status_description_key_name, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, override_status_description_key_name);
@@ -175,14 +175,16 @@ also passing the context passed in `amqp_management_open_async`. **]**
 ### amqp_management_execute_operation_async
 
 ```c
-int amqp_management_execute_operation_async(AMQP_MANAGEMENT_HANDLE amqp_management, const char* operation, const char* type, const char* locales, MESSAGE_HANDLE message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE on_execute_operation_complete, void* on_execute_operation_complete_context);
+ASYNC_OPERATION_HANDLE amqp_management_execute_operation_async(AMQP_MANAGEMENT_HANDLE amqp_management, const char* operation, const char* type, const char* locales, MESSAGE_HANDLE message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE on_execute_operation_complete, void* on_execute_operation_complete_context);
 ```
 
 **SRS_AMQP_MANAGEMENT_01_055: [** `amqp_management_execute_operation_async` shall start an AMQP management operation. **]**
 
-**SRS_AMQP_MANAGEMENT_01_056: [** On success it shall return 0. **]**
+**SRS_AMQP_MANAGEMENT_01_056: [** On success it shall return an `ASYNC_OPERATION_HANDLE`. **]**
 
-**SRS_AMQP_MANAGEMENT_01_057: [** If `amqp_management`, `operation`, `type` or `on_execute_operation_complete` is NULL, `amqp_management_execute_operation_async` shall fail and return a non-zero value. **]**
+**SRS_AMQP_MANAGEMENT_09_004: [** The `ASYNC_OPERATION_HANDLE` cancel function shall cancel the underlying send async operation, remove this operation from the pending list, destroy this async operation. **]**
+
+**SRS_AMQP_MANAGEMENT_01_057: [** If `amqp_management`, `operation`, `type` or `on_execute_operation_complete` is NULL, `amqp_management_execute_operation_async` shall fail and return NULL. **]**
 
 **SRS_AMQP_MANAGEMENT_01_105: [** `on_execute_operation_complete_context` shall be allowed to be NULL. **]**
 
@@ -190,7 +192,7 @@ int amqp_management_execute_operation_async(AMQP_MANAGEMENT_HANDLE amqp_manageme
 
 **SRS_AMQP_MANAGEMENT_01_103: [** Otherwise the existing message shall be cloned by using `message_clone` before being modified accordingly and used for the pending operation. **]**
 
-**SRS_AMQP_MANAGEMENT_01_081: [** If `amqp_management_execute_operation_async` is called when not OPEN, it shall fail and return a non-zero value. **]**
+**SRS_AMQP_MANAGEMENT_01_081: [** If `amqp_management_execute_operation_async` is called when not OPEN, it shall fail and return `NULL`. **]**
 
 **SRS_AMQP_MANAGEMENT_01_104: [** If `amqp_management_execute_operation_async` is called when the AMQP management is in error, it shall fail and return a non-zero value. **]**
 
@@ -210,7 +212,7 @@ int amqp_management_execute_operation_async(AMQP_MANAGEMENT_HANDLE amqp_manageme
 
 **SRS_AMQP_MANAGEMENT_01_101: [** After setting the application properties, the application properties instance shall be freed by `amqpvalue_destroy`. **]**
 
-**SRS_AMQP_MANAGEMENT_01_090: [** If any APIs used to create and set the application properties on the message fails, `amqp_management_execute_operation_async` shall fail and return a non-zero value. **]**
+**SRS_AMQP_MANAGEMENT_01_090: [** If any APIs used to create and set the application properties on the message fails, `amqp_management_execute_operation_async` shall fail and return NULL. **]**
 
 **SRS_AMQP_MANAGEMENT_01_094: [** In order to set the message Id on the message, the properties shall be obtained by calling `message_get_properties`. **]**
 
@@ -230,7 +232,7 @@ int amqp_management_execute_operation_async(AMQP_MANAGEMENT_HANDLE amqp_manageme
 
 **SRS_AMQP_MANAGEMENT_01_166: [** The `on_message_send_complete` callback shall be passed to the `messagesender_send_async` call. **]**
 
-**SRS_AMQP_MANAGEMENT_01_089: [** If `messagesender_send_async` fails, `amqp_management_execute_operation_async` shall fail and return a non-zero value. **]**
+**SRS_AMQP_MANAGEMENT_01_089: [** If `messagesender_send_async` fails, `amqp_management_execute_operation_async` shall fail and return NULL. **]**
 
 **SRS_AMQP_MANAGEMENT_01_091: [** Once the request message has been sent, an entry shall be stored in the pending operations list by calling `singlylinkedlist_add`. **]**
 

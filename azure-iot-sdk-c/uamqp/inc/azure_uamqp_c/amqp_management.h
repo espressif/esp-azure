@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include "azure_macro_utils/macro_utils.h"
+#include "azure_uamqp_c/async_operation.h"
 #include "azure_uamqp_c/session.h"
 #include "azure_uamqp_c/message.h"
 
@@ -39,7 +40,7 @@ MU_DEFINE_ENUM(AMQP_MANAGEMENT_OPEN_RESULT, AMQP_MANAGEMENT_OPEN_RESULT_VALUES)
     MOCKABLE_FUNCTION(, void, amqp_management_destroy, AMQP_MANAGEMENT_HANDLE, amqp_management);
     MOCKABLE_FUNCTION(, int, amqp_management_open_async, AMQP_MANAGEMENT_HANDLE, amqp_management, ON_AMQP_MANAGEMENT_OPEN_COMPLETE, on_amqp_management_open_complete, void*, on_amqp_management_open_complete_context, ON_AMQP_MANAGEMENT_ERROR, on_amqp_management_error, void*, on_amqp_management_error_context);
     MOCKABLE_FUNCTION(, int, amqp_management_close, AMQP_MANAGEMENT_HANDLE, amqp_management);
-    MOCKABLE_FUNCTION(, int, amqp_management_execute_operation_async, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, operation, const char*, type, const char*, locales, MESSAGE_HANDLE, message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE, on_execute_operation_complete, void*, context);
+    MOCKABLE_FUNCTION(, ASYNC_OPERATION_HANDLE, amqp_management_execute_operation_async, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, operation, const char*, type, const char*, locales, MESSAGE_HANDLE, message, ON_AMQP_MANAGEMENT_EXECUTE_OPERATION_COMPLETE, on_execute_operation_complete, void*, context);
     MOCKABLE_FUNCTION(, void, amqp_management_set_trace, AMQP_MANAGEMENT_HANDLE, amqp_management, bool, trace_on);
     MOCKABLE_FUNCTION(, int, amqp_management_set_override_status_code_key_name, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, override_status_code_key_name);
     MOCKABLE_FUNCTION(, int, amqp_management_set_override_status_description_key_name, AMQP_MANAGEMENT_HANDLE, amqp_management, const char*, override_status_description_key_name);

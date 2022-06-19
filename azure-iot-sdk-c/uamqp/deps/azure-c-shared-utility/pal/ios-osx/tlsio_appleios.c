@@ -425,7 +425,7 @@ static void dowork_read(TLS_IO_INSTANCE* tls_io_instance)
     if (tls_io_instance->tlsio_state == TLSIO_STATE_OPEN)
     {
         CFStreamStatus read_status = CFReadStreamGetStatus(tls_io_instance->sockRead);
-        if (read_status == kCFStreamStatusAtEnd)
+        if (read_status == kCFStreamStatusAtEnd || read_status == kCFStreamStatusError)
         {
             enter_tlsio_error_state(tls_io_instance);
         }
@@ -499,6 +499,10 @@ static void dowork_send(TLS_IO_INSTANCE* tls_io_instance)
                 {
                     // The errSSLWouldBlock is defined as a recoverable error and should just be retried
                     LogInfo("errSSLWouldBlock on write");
+                    if (write_error != NULL)
+                    {
+                        CFRelease(write_error);
+                    }
                 }
             }
         }

@@ -1,13 +1,13 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 if(NOT ${use_mqtt})
     message(FATAL_ERROR "iothubclient_mqtt_mod_dt_e2e being generated without MQTT support")
 endif()
 
-compileAsC11()
+compileAsC99()
 set(theseTestsName iothubclient_mqtt_mod_dt_e2e)
 
 set(${theseTestsName}_test_files
@@ -20,15 +20,6 @@ set(${theseTestsName}_c_files
     ../common_dt_e2e/iothubclient_common_dt_e2e.c
 )
 
-set(${theseTestsName}_nuget_test_files
-    ${theseTestsName}.c
-    ../common_dt_e2e/iothubclient_common_dt_e2e.c
-)
-
-set(${theseTestsName}_nuget_c_files
-    ../../../certs/certs.c
-)
-
 set(${theseTestsName}_c_files
     ../../../certs/certs.c
     ../../../deps/parson/parson.c
@@ -39,10 +30,6 @@ set(${theseTestsName}_h_files
     ../../../deps/parson/parson.h
     ../common_dt_e2e/iothubclient_common_dt_e2e.h
 )
-
-if(${use_wolfssl})
-    add_definitions(-DUSE_WOLFSSL)
-endif()
 
 if(${use_sample_trusted_cert})
     add_definitions(-DSET_TRUSTED_CERT_IN_SAMPLES)
@@ -90,14 +77,6 @@ if(WIN32)
             rpcrt4
         )
         linkMqttLibrary(${theseTestsName}_exe)
-    endif()
-
-    if(TARGET ${theseTestsName}_nuget_exe)
-           target_link_libraries(${theseTestsName}_nuget_exe
-                   iothub_test
-                   iothub_service_client
-                   rpcrt4
-           )
     endif()
 else()
     if(UNIX) #LINUX OR APPLE

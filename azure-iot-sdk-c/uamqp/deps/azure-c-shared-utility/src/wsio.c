@@ -63,22 +63,26 @@ static void indicate_open_complete(WSIO_INSTANCE* ws_io_instance, IO_OPEN_RESULT
 static void complete_send_item(LIST_ITEM_HANDLE pending_io_list_item, IO_SEND_RESULT io_send_result)
 {
     PENDING_IO* pending_io = (PENDING_IO*)singlylinkedlist_item_get_value(pending_io_list_item);
-    WSIO_INSTANCE* wsio_instance = (WSIO_INSTANCE*)pending_io->wsio;
-
-    /* Codes_SRS_WSIO_01_145: [ Removing it from the list shall be done by calling singlylinkedlist_remove. ]*/
-    if (singlylinkedlist_remove(wsio_instance->pending_io_list, pending_io_list_item) != 0)
+    if (pending_io != NULL)
     {
-        LogError("Failed removing pending IO from linked list.");
-    }
+        WSIO_INSTANCE* wsio_instance = (WSIO_INSTANCE*)pending_io->wsio;
 
-    /* Codes_SRS_WSIO_01_105: [ The argument on_send_complete shall be optional, if NULL is passed by the caller then no send complete callback shall be triggered. ]*/
-    if (pending_io->on_send_complete != NULL)
-    {
-        pending_io->on_send_complete(pending_io->callback_context, io_send_result);
-    }
+        /* Codes_SRS_WSIO_01_145: [ Removing it from the list shall be done by calling singlylinkedlist_remove. ]*/
+        if (wsio_instance == NULL ||
+            singlylinkedlist_remove(wsio_instance->pending_io_list, pending_io_list_item) != 0)
+        {
+            LogError("Failed removing pending IO from linked list.");
+        }
 
-    /* Codes_SRS_WSIO_01_144: [ Also the pending IO data shall be freed. ]*/
-    free(pending_io);
+        /* Codes_SRS_WSIO_01_105: [ The argument on_send_complete shall be optional, if NULL is passed by the caller then no send complete callback shall be triggered. ]*/
+        if (pending_io->on_send_complete != NULL)
+        {
+            pending_io->on_send_complete(pending_io->callback_context, io_send_result);
+        }
+
+        /* Codes_SRS_WSIO_01_144: [ Also the pending IO data shall be freed. ]*/
+        free(pending_io);
+    }
 }
 
 static void on_underlying_ws_send_frame_complete(void* context, WS_SEND_FRAME_RESULT ws_send_frame_result)
@@ -719,7 +723,7 @@ static void* wsio_clone_option(const char* name, const void* value)
         if (strcmp(name, WSIO_OPTIONS) == 0)
         {
             /* Codes_SRS_WSIO_01_171: [** wsio_clone_option called with name being WSIOOptions shall return the same value. ]*/
-            result = (void*)value;
+            result = (void*)OptionHandler_Clone((OPTIONHANDLER_HANDLE)value);
         }
         else
         {
@@ -796,10 +800,11 @@ OPTIONHANDLER_HANDLE wsio_retrieveoptions(CONCRETE_IO_HANDLE handle)
                 {
                     /* Codes_SRS_WSIO_01_182: [ If OptionHandler_AddOption fails, uws_client_retrieve_options shall fail and return NULL. ]*/
                     LogError("unable to OptionHandler_AddOption");
-                    OptionHandler_Destroy(concreteOptions);
                     OptionHandler_Destroy(result);
                     result = NULL;
                 }
+
+                OptionHandler_Destroy(concreteOptions);
             }
         }
     }

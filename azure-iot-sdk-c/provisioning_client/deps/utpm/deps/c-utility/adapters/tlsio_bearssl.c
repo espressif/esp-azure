@@ -1391,7 +1391,7 @@ static void *tlsio_bearssl_CloneOption(const char *name, const void *value)
     {
         if (strcmp(name, OPTION_UNDERLYING_IO_OPTIONS) == 0)
         {
-            result = (void *)value;
+            result = (void*)OptionHandler_Clone((OPTIONHANDLER_HANDLE)value);
         }
         else if (strcmp(name, OPTION_TRUSTED_CERT) == 0)
         {
@@ -1654,39 +1654,48 @@ OPTIONHANDLER_HANDLE tlsio_bearssl_retrieveoptions(CONCRETE_IO_HANDLE handle)
             TLS_IO_INSTANCE *tls_io_instance = (TLS_IO_INSTANCE *)handle;
             OPTIONHANDLER_HANDLE underlying_io_options;
 
-            if ((underlying_io_options = xio_retrieveoptions(tls_io_instance->socket_io)) == NULL ||
-                OptionHandler_AddOption(result, OPTION_UNDERLYING_IO_OPTIONS, underlying_io_options) != OPTIONHANDLER_OK)
+            if ((underlying_io_options = xio_retrieveoptions(tls_io_instance->socket_io)) == NULL)
             {
-                LogError("unable to save underlying_io options");
-                OptionHandler_Destroy(underlying_io_options);
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->trusted_certificates != NULL &&
-                     OptionHandler_AddOption(result, OPTION_TRUSTED_CERT, tls_io_instance->trusted_certificates) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save TrustedCerts option");
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->x509_certificate != NULL && 
-                    OptionHandler_AddOption(result, SU_OPTION_X509_CERT, tls_io_instance->x509_certificate) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save x509certificate option");
-                OptionHandler_Destroy(result);
-                result = NULL;
-            }
-            else if (tls_io_instance->x509_private_key != NULL &&
-                    OptionHandler_AddOption(result, SU_OPTION_X509_PRIVATE_KEY, tls_io_instance->x509_private_key) != OPTIONHANDLER_OK)
-            {
-                LogError("unable to save x509privatekey option");
+                LogError("unable to retrieve underlying_io options");
                 OptionHandler_Destroy(result);
                 result = NULL;
             }
             else
             {
-                /*all is fine, all interesting options have been saved*/
-                /*return as is*/
+                if (OptionHandler_AddOption(result, OPTION_UNDERLYING_IO_OPTIONS, underlying_io_options) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save underlying_io options");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->trusted_certificates != NULL &&
+                         OptionHandler_AddOption(result, OPTION_TRUSTED_CERT, tls_io_instance->trusted_certificates) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save TrustedCerts option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->x509_certificate != NULL && 
+                        OptionHandler_AddOption(result, SU_OPTION_X509_CERT, tls_io_instance->x509_certificate) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save x509certificate option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else if (tls_io_instance->x509_private_key != NULL &&
+                        OptionHandler_AddOption(result, SU_OPTION_X509_PRIVATE_KEY, tls_io_instance->x509_private_key) != OPTIONHANDLER_OK)
+                {
+                    LogError("unable to save x509privatekey option");
+                    OptionHandler_Destroy(result);
+                    result = NULL;
+                }
+                else
+                {
+                    /*all is fine, all interesting options have been saved*/
+                    /*return as is*/
+                }
+
+                OptionHandler_Destroy(underlying_io_options);
             }
         }
     }

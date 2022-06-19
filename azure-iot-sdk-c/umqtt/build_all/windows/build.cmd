@@ -99,7 +99,15 @@ if EXIST %build-root%\cmake\%CMAKE_DIR% (
 
 echo %build-root%\cmake\%CMAKE_DIR%
 mkdir %build-root%\cmake\%CMAKE_DIR%
-pushd %build-root%\cmake\%CMAKE_DIR%    
+pushd %build-root%\cmake\%CMAKE_DIR%
+
+echo ***checking msbuild***
+where /q msbuild
+IF ERRORLEVEL 1 (
+echo ***setting VC paths***
+    IF EXIST "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat" call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat"
+)
+where msbuild
 
 if %MAKE_NUGET_PKG% == yes (
     echo ***Running CMAKE for Win32***
@@ -113,7 +121,7 @@ if %MAKE_NUGET_PKG% == yes (
     )
     mkdir %build-root%\cmake\umqtt_x64
     pushd %build-root%\cmake\umqtt_x64
-    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 14 Win64"
+    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 15 2017" -A x64
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
     popd
 
@@ -124,20 +132,20 @@ if %MAKE_NUGET_PKG% == yes (
     mkdir %build-root%\cmake\umqtt_arm
     pushd %build-root%\cmake\umqtt_arm
     echo ***Running CMAKE for ARM***
-    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 14 ARM" 
+    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 15 2017" -A ARM
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
-    
+
 ) else if %build-platform% == Win32 (
     echo ***Running CMAKE for Win32***
-    cmake %build-root% -Drun_unittests:BOOL=%CMAKE_run_unittests%
+    cmake %build-root% -Drun_unittests:BOOL=%CMAKE_run_unittests% -G "Visual Studio 15 2017" -A Win32
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 ) else if %build-platform% == arm (
     echo ***Running CMAKE for ARM***
-    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 14 ARM" 
+    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 15 2017" -A ARM
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 ) else (
     echo ***Running CMAKE for Win64***
-    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 14 Win64"
+    cmake -Drun_unittests:BOOL=%CMAKE_run_unittests% %build-root% -G "Visual Studio 15 2017" -A x64
     if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!
 )
 
@@ -164,7 +172,7 @@ if %MAKE_NUGET_PKG% == yes (
 
     if %build-platform% neq arm (
         echo Build Platform: %build-platform%
-        
+
         if "%build-config%" == "Debug" (
             ctest -C "debug" -V
             if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!

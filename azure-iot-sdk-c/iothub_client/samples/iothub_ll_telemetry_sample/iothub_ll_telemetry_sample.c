@@ -58,7 +58,7 @@ static size_t g_message_count_send_confirmations = 0;
 static void send_confirm_callback(IOTHUB_CLIENT_CONFIRMATION_RESULT result, void* userContextCallback)
 {
     (void)userContextCallback;
-    // When a message is sent this callback will get envoked
+    // When a message is sent this callback will get invoked
     g_message_count_send_confirmations++;
     (void)printf("Confirmation callback received for message %lu with result %s\r\n", (unsigned long)g_message_count_send_confirmations, MU_ENUM_TO_STRING(IOTHUB_CLIENT_CONFIRMATION_RESULT, result));
 }
@@ -116,7 +116,7 @@ int main(void)
     }
     else
     {
-        // Set any option that are neccessary.
+        // Set any option that are necessary.
         // For available options please see the iothub_sdk_options.md documentation
 
 #ifndef SAMPLE_HTTP
@@ -131,12 +131,12 @@ int main(void)
             IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_TRUSTED_CERT, certificates);
 #endif // SET_TRUSTED_CERT_IN_SAMPLES
 
-#if defined SAMPLE_MQTT || defined SAMPLE_MQTT_WS
+#if defined SAMPLE_MQTT || defined SAMPLE_MQTT_OVER_WEBSOCKETS
         //Setting the auto URL Encoder (recommended for MQTT). Please use this option unless
         //you are URL Encoding inputs yourself.
         //ONLY valid for use with MQTT
-        //bool urlEncodeOn = true;
-        //IoTHubDeviceClient_LL_SetOption(iothub_ll_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
+        bool urlEncodeOn = true;
+        (void)IoTHubDeviceClient_LL_SetOption(device_ll_handle, OPTION_AUTO_URL_ENCODE_DECODE, &urlEncodeOn);
 #endif
 
         // Setting connection status callback to get indication of connection to iothub
@@ -151,10 +151,14 @@ int main(void)
                 //message_handle = IoTHubMessage_CreateFromByteArray((const unsigned char*)msgText, strlen(msgText)));
 
                 // Set Message property
-                /*(void)IoTHubMessage_SetMessageId(message_handle, "MSG_ID");
+                /*
+                (void)IoTHubMessage_SetMessageId(message_handle, "MSG_ID");
                 (void)IoTHubMessage_SetCorrelationId(message_handle, "CORE_ID");
                 (void)IoTHubMessage_SetContentTypeSystemProperty(message_handle, "application%2fjson");
-                (void)IoTHubMessage_SetContentEncodingSystemProperty(message_handle, "utf-8");*/
+                (void)IoTHubMessage_SetContentEncodingSystemProperty(message_handle, "utf-8");
+                (void)IoTHubMessage_SetMessageCreationTimeUtcSystemProperty(message_handle, "2020-07-01T01:00:00.346Z");
+                */
+
 
                 // Add custom properties to message
                 (void)IoTHubMessage_SetProperty(message_handle, "property_key", "property_value");

@@ -23,6 +23,7 @@ inc\map.h
 inc\mqttapi.h
 inc\platform.h
 inc\refcount.h
+inc\safe_math.h
 inc\sastoken.h
 inc\sha.h
 inc\sha-private.h

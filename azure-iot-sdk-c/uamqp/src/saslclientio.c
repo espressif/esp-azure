@@ -852,7 +852,7 @@ static void on_sasl_frame_received_callback(void* context, AMQP_VALUE sasl_frame
                                 else if (send_sasl_response(sasl_client_io_instance, response_bytes) != 0)
                                 {
                                     /* Codes_SRS_SASLCLIENTIO_01_119: [If any error is encountered when parsing the received frame, the `on_io_open_complete` callback shall be triggered with `IO_OPEN_ERROR`.]*/
-                                    LogError("Cannot send SASL reponse");
+                                    LogError("Cannot send SASL response");
                                     handle_error(sasl_client_io_instance);
                                 }
                             }

@@ -5,10 +5,12 @@
 #include <cstdlib>
 #include <cstddef>
 #include <ctime>
+#include <cstdint>
 #else
 #include <stdlib.h>
 #include <stddef.h>
 #include <time.h>
+#include <stdint.h>
 #endif
 
 static void* my_gballoc_malloc(size_t size)
@@ -26,6 +28,7 @@ static void my_gballoc_free(void* ptr)
 #include "umock_c/umock_c.h"
 #include "umock_c/umocktypes_charptr.h"
 #include "umock_c/umock_c_negative_tests.h"
+#include "umock_c/umocktypes_stdint.h"
 
 #define ENABLE_MOCKS
 #include "azure_c_shared_utility/gballoc.h"
@@ -62,7 +65,7 @@ IMPLEMENT_UMOCK_C_ENUM_TYPE(HTTP_HEADERS_RESULT, HTTP_HEADERS_RESULT_VALUES);
 #define TEST_RESPONSE_CONTENT (BUFFER_HANDLE)0x59
 #define TEST_CONST_CHAR_STAR_NULL (const char*)NULL
 #define TEST_SASTOKEN_HANDLE (STRING_HANDLE)0x60
-#define TEST_EXPIRY ((size_t)7200)
+#define TEST_EXPIRY ((uint64_t)7200)
 #define TEST_TIME_T ((time_t)-1)
 
 static const char* TEST_KEY = "key";
@@ -96,7 +99,7 @@ static void my_STRING_delete(STRING_HANDLE handle)
     my_gballoc_free(handle);
 }
 
-static STRING_HANDLE my_SASToken_CreateString(const char* key, const char* scope, const char* keyName, size_t expiry)
+static STRING_HANDLE my_SASToken_CreateString(const char* key, const char* scope, const char* keyName, uint64_t expiry)
 {
     (void)key, (void)scope, (void)keyName, (void)expiry;
     return (STRING_HANDLE)my_gballoc_malloc(1);
@@ -199,6 +202,9 @@ TEST_SUITE_INITIALIZE(TestClassInitialize)
     ASSERT_IS_NOT_NULL(g_testByTest);
 
     umock_c_init(on_umock_c_error);
+
+    result = umocktypes_stdint_register_types();
+    ASSERT_ARE_EQUAL(int, 0, result, "umocktypes_stdint_register_types");
 
     result = umocktypes_charptr_register_types();
     ASSERT_ARE_EQUAL(int, 0, result);
@@ -654,6 +660,7 @@ TEST_FUNCTION(HTTPAPIEX_SAS_invoke_executerequest_sastoken_create_returns_null_s
 
     STRICT_EXPECTED_CALL(HTTPHeaders_FindHeaderValue(TEST_REQUEST_HTTP_HEADERS_HANDLE, "Authorization")).SetReturn(TEST_CHAR_ARRAY);
     STRICT_EXPECTED_CALL(get_time(NULL)).SetReturn(3600);
+    STRICT_EXPECTED_CALL(get_difftime(3600, 0)).SetReturn(3600);
     STRICT_EXPECTED_CALL(SASToken_CreateString(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, TEST_EXPIRY)).SetReturn(NULL);
     STRICT_EXPECTED_CALL(HTTPAPIEX_ExecuteRequest(TEST_HTTPAPIEX_HANDLE, TEST_HTTPAPI_REQUEST_TYPE, TEST_CHAR_ARRAY, TEST_REQUEST_HTTP_HEADERS_HANDLE, TEST_REQUEST_CONTENT, &statusCode, TEST_RESPONSE_HTTP_HEADERS_HANDLE, TEST_RESPONSE_CONTENT)).SetReturn(HTTPAPIEX_OK);
 
@@ -685,6 +692,7 @@ TEST_FUNCTION(HTTPAPIEX_SAS_invoke_executerequest_replace_header_name_value_pair
 
     STRICT_EXPECTED_CALL(HTTPHeaders_FindHeaderValue(TEST_REQUEST_HTTP_HEADERS_HANDLE, "Authorization")).SetReturn(TEST_CHAR_ARRAY);
     STRICT_EXPECTED_CALL(get_time(NULL)).SetReturn(3600);
+    STRICT_EXPECTED_CALL(get_difftime(3600, 0)).SetReturn(3600);
     STRICT_EXPECTED_CALL(SASToken_CreateString(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, TEST_EXPIRY));
     STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG)).SetReturn(TEST_CHAR_ARRAY);
     STRICT_EXPECTED_CALL(HTTPHeaders_ReplaceHeaderNameValuePair(TEST_REQUEST_HTTP_HEADERS_HANDLE, "Authorization", IGNORED_PTR_ARG)).SetReturn(HTTP_HEADERS_ERROR);
@@ -717,6 +725,7 @@ TEST_FUNCTION(HTTPAPIEX_SAS_invoke_executerequest_replace_header_name_value_pair
 
     STRICT_EXPECTED_CALL(HTTPHeaders_FindHeaderValue(TEST_REQUEST_HTTP_HEADERS_HANDLE, "Authorization")).SetReturn(TEST_CHAR_ARRAY);
     STRICT_EXPECTED_CALL(get_time(NULL)).SetReturn((time_t)3600);
+    STRICT_EXPECTED_CALL(get_difftime(3600, 0)).SetReturn(3600);
     STRICT_EXPECTED_CALL(SASToken_CreateString(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, TEST_EXPIRY));
     STRICT_EXPECTED_CALL(STRING_c_str(IGNORED_PTR_ARG)).SetReturn(TEST_CHAR_ARRAY);
     STRICT_EXPECTED_CALL(HTTPHeaders_ReplaceHeaderNameValuePair(TEST_REQUEST_HTTP_HEADERS_HANDLE, "Authorization", TEST_CHAR_ARRAY)).SetReturn(HTTP_HEADERS_OK);

@@ -218,6 +218,11 @@ static void decode_message_value_callback(void* context, AMQP_VALUE decoded_valu
             }
         }
     }
+    else
+    {
+        LogError("Failed decoding descriptor");
+        message_receiver->decode_error = true;
+    }
 }
 
 static AMQP_VALUE on_transfer_received(void* context, TRANSFER_HANDLE transfer, uint32_t payload_size, const unsigned char* payload_bytes)

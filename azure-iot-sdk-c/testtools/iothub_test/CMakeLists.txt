@@ -23,6 +23,7 @@ set(IOTHUB_TEST_INC_FOLDER ${CMAKE_CURRENT_LIST_DIR}/inc CACHE INTERNAL "this is
 
 include_directories(${IOTHUB_TEST_INC_FOLDER} ${SHARED_UTIL_INC_FOLDER} ${UAMQP_INC_FOLDER})
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../iothub_client/inc)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../iothub_service_client/inc)
 include_directories(${IOTHUB_SERVICE_CLIENT_INC_FOLDER})
 
 IF(WIN32)
@@ -39,11 +40,7 @@ endif()
 
 add_library(iothub_test ${iothub_test_c_files} ${iothub_test_h_files})
 
-if(NOT ${nuget_e2e_tests})
-    target_link_libraries(iothub_test uamqp iothub_service_client)
-else()
-    target_link_libraries(iothub_test iothub_service_client)
-endif()
+target_link_libraries(iothub_test uamqp iothub_service_client)
 
 if(${use_installed_dependencies})
     #Set CMAKE_INSTALL_LIBDIR if not defined
@@ -56,7 +53,7 @@ if(${use_installed_dependencies})
     install(TARGETS iothub_test EXPORT azure_iot_sdksTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/../bin
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot
     )
     install(FILES ${iothub_test_h_files} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot)

@@ -206,3 +206,7 @@ build_all/windows/nuget.exe
 /cmake
 /build
 *.cert
+/.vs
+
+# Doc stage output
+/doc-stage

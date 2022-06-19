@@ -11,7 +11,7 @@ curl --version
 
 # Set the default cores
 CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
-cmake . -Bcmake -Duse_bearssl:BOOL=ON -Drun_unittests:BOOL=ON -Duse_openssl:BOOL=OFF
+cmake . -Bcmake -Duse_bearssl:BOOL=ON -Drun_unittests:BOOL=ON -Duse_openssl:BOOL=OFF -D CMAKE_C_COMPILER=gcc
 cd cmake
 
 make --jobs=$CORES

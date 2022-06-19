@@ -26,6 +26,7 @@ set(mbed_exported_project_files
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/optimize_size.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/platform.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/refcount.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/safe_math.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/sastoken.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/sha.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../../inc/azure_c_shared_utility/sha-private.h

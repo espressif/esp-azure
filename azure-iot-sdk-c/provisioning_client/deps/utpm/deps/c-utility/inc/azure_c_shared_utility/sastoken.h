@@ -4,6 +4,8 @@
 #ifndef SASTOKEN_H
 #define SASTOKEN_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 #else
 #include <stdbool.h>
@@ -17,8 +19,8 @@ extern "C" {
 #endif
 
     MOCKABLE_FUNCTION(, bool, SASToken_Validate, STRING_HANDLE, sasToken);
-    MOCKABLE_FUNCTION(, STRING_HANDLE, SASToken_Create, STRING_HANDLE, key, STRING_HANDLE, scope, STRING_HANDLE, keyName, size_t, expiry);
-    MOCKABLE_FUNCTION(, STRING_HANDLE, SASToken_CreateString, const char*, key, const char*, scope, const char*, keyName, size_t, expiry);
+    MOCKABLE_FUNCTION(, STRING_HANDLE, SASToken_Create, STRING_HANDLE, key, STRING_HANDLE, scope, STRING_HANDLE, keyName, uint64_t, expiry);
+    MOCKABLE_FUNCTION(, STRING_HANDLE, SASToken_CreateString, const char*, key, const char*, scope, const char*, keyName, uint64_t, expiry);
 
 #ifdef __cplusplus
 }
