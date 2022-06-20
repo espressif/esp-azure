@@ -140,6 +140,8 @@ component_compile_definitions (
 	HSM_TYPE_SAS_TOKEN
 )
 
+add_definitions(-DLOGGER_DISABLE_PAL)
+
 if (CONFIG_DEVICE_COMMON_NAME)
 	add_definitions(-DUSE_PROV_MODULE)
 endif()
