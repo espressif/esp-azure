@@ -422,8 +422,6 @@ static void link_frame_received(void* context, AMQP_VALUE performative, uint32_t
                 bool more;
                 bool is_error;
 
-                link_instance->current_link_credit--;
-                link_instance->delivery_count++;
                 if (link_instance->current_link_credit == 0)
                 {
                     link_instance->current_link_credit = link_instance->max_link_credit;
@@ -468,6 +466,8 @@ static void link_frame_received(void* context, AMQP_VALUE performative, uint32_t
                         const unsigned char* indicate_payload_bytes;
                         uint32_t indicate_payload_size;
 
+                        link_instance->current_link_credit--;
+                        link_instance->delivery_count++;
                         /* if no previously stored chunks then simply report the current payload */
                         if (link_instance->received_payload_size > 0)
                         {
@@ -559,19 +559,20 @@ static void link_frame_received(void* context, AMQP_VALUE performative, uint32_t
                                 {
                                     delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, LINK_DELIVERY_SETTLE_REASON_DISPOSITION_RECEIVED, delivery_state);
                                     async_operation_destroy(pending_delivery_operation);
-                                    if (singlylinkedlist_remove(link_instance->pending_deliveries, pending_delivery) != 0)
-                                    {
-                                        LogError("Cannot remove pending delivery");
-                                        break;
-                                    }
+                                }
+                                else
+                                {
+                                    LogError("Failed getting the disposition state");
+                                }
 
-                                    pending_delivery = next_pending_delivery;
+                                if (singlylinkedlist_remove(link_instance->pending_deliveries, pending_delivery) != 0)
+                                {
+                                    LogError("Cannot remove pending delivery");
+                                    break;
                                 }
                             }
-                            else
-                            {
-                                pending_delivery = next_pending_delivery;
-                            }
+
+                            pending_delivery = next_pending_delivery;
                         }
                     }
                 }
@@ -689,15 +690,36 @@ static void on_send_complete(void* context, IO_SEND_RESULT send_result)
 {
     LIST_ITEM_HANDLE delivery_instance_list_item = (LIST_ITEM_HANDLE)context;
     ASYNC_OPERATION_HANDLE pending_delivery_operation = (ASYNC_OPERATION_HANDLE)singlylinkedlist_item_get_value(delivery_instance_list_item);
-    DELIVERY_INSTANCE* delivery_instance = (DELIVERY_INSTANCE*)GET_ASYNC_OPERATION_CONTEXT(DELIVERY_INSTANCE, pending_delivery_operation);
-    LINK_HANDLE link = (LINK_HANDLE)delivery_instance->link;
-
-    (void)send_result;
-    if (link->snd_settle_mode == sender_settle_mode_settled)
+    if (pending_delivery_operation != NULL)
     {
-        delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, send_result == IO_SEND_OK ? LINK_DELIVERY_SETTLE_REASON_SETTLED : LINK_DELIVERY_SETTLE_REASON_NOT_DELIVERED, NULL);
-        async_operation_destroy(pending_delivery_operation);
-        (void)singlylinkedlist_remove(link->pending_deliveries, delivery_instance_list_item);
+        DELIVERY_INSTANCE* delivery_instance = (DELIVERY_INSTANCE*)GET_ASYNC_OPERATION_CONTEXT(DELIVERY_INSTANCE, pending_delivery_operation);
+        if (delivery_instance != NULL)
+        {
+            LINK_HANDLE link = (LINK_HANDLE)delivery_instance->link;
+
+            (void)send_result;
+            if (link != NULL && 
+                link->snd_settle_mode == sender_settle_mode_settled)
+            {
+                delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, send_result == IO_SEND_OK ? LINK_DELIVERY_SETTLE_REASON_SETTLED : LINK_DELIVERY_SETTLE_REASON_NOT_DELIVERED, NULL);
+                async_operation_destroy(pending_delivery_operation);
+                (void)singlylinkedlist_remove(link->pending_deliveries, delivery_instance_list_item);
+            }
+        }
+    }
+}
+
+static void on_link_endpoint_destroyed(LINK_ENDPOINT_HANDLE handle, void* context)
+{
+    if (context != NULL)
+    {
+        LINK_INSTANCE* link = (LINK_INSTANCE*)context;
+
+        if (link->link_endpoint == handle)
+        {
+            // In this case the link endpoint has been destroyed by the session, and link should not try to free it.
+            link->link_endpoint = NULL;
+        }
     }
 }
 
@@ -778,6 +800,12 @@ LINK_HANDLE link_create(SESSION_HANDLE session, const char* name, role role, AMQ
                         free(result->name);
                         free(result);
                         result = NULL;
+                    }
+                    else
+                    {
+                        // This ensures link.c gets notified if the link endpoint is destroyed
+                        // by uamqp (due to a DETACH from the hub, e.g.) to prevent a double free.
+                        session_set_link_endpoint_callback(result->link_endpoint, on_link_endpoint_destroyed, result);
                     }
                 }
             }
@@ -883,6 +911,9 @@ void link_destroy(LINK_HANDLE link)
 
         link->on_link_state_changed = NULL;
         (void)link_detach(link, true, NULL, NULL, NULL);
+        // This is required to suppress the link destroyed callback, since this function is 
+        // actively requesting that (in the following line).
+        session_set_link_endpoint_callback(link->link_endpoint, NULL, NULL);
         session_destroy_link_endpoint(link->link_endpoint);
         amqpvalue_destroy(link->source);
         amqpvalue_destroy(link->target);
@@ -1312,7 +1343,7 @@ static void link_transfer_cancel_handler(ASYNC_OPERATION_HANDLE link_transfer_op
         pending_delivery->on_delivery_settled(pending_delivery->callback_context, pending_delivery->delivery_id, LINK_DELIVERY_SETTLE_REASON_CANCELLED, NULL);
     }
 
-    (void)singlylinkedlist_remove_if(((LINK_HANDLE)pending_delivery->link)->pending_deliveries, remove_pending_delivery_condition_function, pending_delivery);
+    (void)singlylinkedlist_remove_if(((LINK_HANDLE)pending_delivery->link)->pending_deliveries, remove_pending_delivery_condition_function, link_transfer_operation);
 
     async_operation_destroy(link_transfer_operation);
 }
@@ -1589,22 +1620,26 @@ void link_dowork(LINK_HANDLE link)
             {
                 LIST_ITEM_HANDLE next_item = singlylinkedlist_get_next_item(item);
                 ASYNC_OPERATION_HANDLE delivery_instance_async_operation = (ASYNC_OPERATION_HANDLE)singlylinkedlist_item_get_value(item);
-                DELIVERY_INSTANCE* delivery_instance = (DELIVERY_INSTANCE*)GET_ASYNC_OPERATION_CONTEXT(DELIVERY_INSTANCE, delivery_instance_async_operation);
-
-                if ((delivery_instance->timeout != 0) &&
-                    (current_tick - delivery_instance->start_tick >= delivery_instance->timeout))
+                if (delivery_instance_async_operation != NULL)
                 {
-                    if (delivery_instance->on_delivery_settled != NULL)
-                    {
-                        delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, LINK_DELIVERY_SETTLE_REASON_TIMEOUT, NULL);
-                    }
+                    DELIVERY_INSTANCE* delivery_instance = (DELIVERY_INSTANCE*)GET_ASYNC_OPERATION_CONTEXT(DELIVERY_INSTANCE, delivery_instance_async_operation);
 
-                    if (singlylinkedlist_remove(link->pending_deliveries, item) != 0)
+                    if ((delivery_instance != NULL) &&
+                        (delivery_instance->timeout != 0) &&
+                        (current_tick - delivery_instance->start_tick >= delivery_instance->timeout))
                     {
-                        LogError("Cannot remove item from list");
-                    }
+                        if (delivery_instance->on_delivery_settled != NULL)
+                        {
+                            delivery_instance->on_delivery_settled(delivery_instance->callback_context, delivery_instance->delivery_id, LINK_DELIVERY_SETTLE_REASON_TIMEOUT, NULL);
+                        }
 
-                    async_operation_destroy(delivery_instance_async_operation);
+                        if (singlylinkedlist_remove(link->pending_deliveries, item) != 0)
+                        {
+                            LogError("Cannot remove item from list");
+                        }
+
+                        async_operation_destroy(delivery_instance_async_operation);
+                    }
                 }
 
                 item = next_item;

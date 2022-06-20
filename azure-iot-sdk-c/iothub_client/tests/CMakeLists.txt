@@ -1,7 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 if(${LINUX})
    add_definitions(-DAZIOT_LINUX)
@@ -29,6 +29,11 @@ function(addSupportedTransportsToTest whatExecutableIsBuilding)
         add_definitions(-DTEST_HTTP)
     endif()
 endfunction()
+
+if(${use_wolfssl})
+    add_definitions(-DUSE_WOLFSSL)
+endif()
+
 
 #this is CMakeLists for iothub_client tests folder
 add_unittest_directory(iothub_ut)
@@ -58,7 +63,7 @@ add_unittest_directory(message_queue_ut)
 add_unittest_directory(iothubmoduleclient_ll_ut)
 add_unittest_directory(iothubmoduleclient_ut)
 
-if(${use_http} AND NOT (${use_wolfssl} OR ${use_bearssl}))
+if(${use_http} AND NOT (${use_wolfssl} OR ${use_bearssl} OR ${use_mbedtls}))
     add_unittest_directory(iothubtransporthttp_ut)
     add_e2etest_directory(iothubclient_http_e2e)
 endif()
@@ -66,10 +71,12 @@ endif()
 if(${use_mqtt})
     add_unittest_directory(iothubtransportmqtt_ut)
     add_unittest_directory(iothubtransport_mqtt_common_ut)
+    add_unittest_directory(iothubtransport_mqtt_common_int_ut)
     add_unittest_directory(iothubtransportmqtt_ws_ut)
 
     # e2e tests
     add_e2etest_directory(iothubclient_mqtt_e2e)
+    add_e2etest_directory(iothubclient_mqtt_mod_e2e)
     add_sfctest_directory(iothubclient_mqtt_e2e_sfc)
     add_e2etest_directory(iothubclient_mqtt_dt_e2e)
     add_sfctest_directory(iothubclient_mqtt_dt_e2e_sfc)
@@ -105,6 +112,7 @@ if(${use_amqp})
 
     # e2e tests
     add_e2etest_directory(iothubclient_amqp_e2e)
+    add_e2etest_directory(iothubclient_amqp_mod_e2e)
     add_e2etest_directory(iothubclient_amqp_dt_e2e)
     add_sfctest_directory(iothubclient_amqp_e2e_sfc)
     add_e2etest_directory(iothubclient_amqp_device_method_e2e)
@@ -122,8 +130,25 @@ endif()
     add_longhaul_test_directory(longhaul_amqp_device_methods)
     add_longhaul_test_directory(longhaul_amqp_device_twin_desired)
     add_longhaul_test_directory(longhaul_amqp_device_twin_reported)
+    add_longhaul_test_directory(longhaul_resource_cleanup)
+endif()
+
+
+if (NOT DEFINED MACOSX AND DEFINED use_schannel AND DEFINED use_socketio)
+  if (NOT ${use_schannel} AND NOT ${use_socketio})
+    if (${use_mqtt})
+      add_unittest_directory(iothubclient_fuzz_mqtt)
+    endif()
+    if (${use_amqp})
+      add_unittest_directory(iothubclient_fuzz_amqp)
+    endif()
+  endif()
 endif()
 
 add_unittest_directory(version_ut)
 
 add_e2etest_directory(iothub_invalidcert_e2e)
+
+if (${use_openssl} AND ${run_e2e_openssl_engine_tests})
+    add_e2etest_directory(iothubclient_openssl_engine_e2e)
+endif()

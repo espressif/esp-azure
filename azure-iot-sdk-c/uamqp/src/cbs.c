@@ -26,7 +26,11 @@ typedef struct CBS_OPERATION_TAG
     ON_CBS_OPERATION_COMPLETE on_cbs_operation_complete;
     void* on_cbs_operation_complete_context;
     SINGLYLINKEDLIST_HANDLE pending_operations;
+    ASYNC_OPERATION_HANDLE amqp_management_async_context;
+    ASYNC_OPERATION_HANDLE token_operation_async_context;
 } CBS_OPERATION;
+
+DEFINE_ASYNC_OPERATION_CONTEXT(CBS_OPERATION);
 
 typedef struct CBS_INSTANCE_TAG
 {
@@ -248,8 +252,9 @@ static void on_amqp_management_execute_operation_complete(void* context, AMQP_MA
                 LogError("Failed removing operation from the pending list");
             }
 
+
             /* Codes_SRS_CBS_01_096: [ The `context` for the operation shall also be freed. ]*/
-            free(cbs_operation);
+            async_operation_destroy(cbs_operation->token_operation_async_context);
         }
     }
 }
@@ -359,7 +364,7 @@ void cbs_destroy(CBS_HANDLE cbs)
             if (pending_operation != NULL)
             {
                 pending_operation->on_cbs_operation_complete(pending_operation->on_cbs_operation_complete_context, CBS_OPERATION_RESULT_INSTANCE_CLOSED, 0, NULL);
-                free(pending_operation);
+                async_operation_destroy(pending_operation->token_operation_async_context);
             }
 
             singlylinkedlist_remove(cbs->pending_operations, first_pending_operation);
@@ -460,9 +465,45 @@ int cbs_close(CBS_HANDLE cbs)
     return result;
 }
 
-int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, const char* token, ON_CBS_OPERATION_COMPLETE on_cbs_put_token_complete, void* on_cbs_put_token_complete_context)
+static bool remove_pending_cbs_operation(const void* item, const void* match_context, bool* continue_processing)
 {
-    int result;
+    bool result;
+
+    if (item == match_context)
+    {
+        async_operation_destroy(((CBS_OPERATION*)match_context)->token_operation_async_context);
+
+        result = true;
+        *continue_processing = false;
+    }
+    else
+    {
+        result = false;
+        *continue_processing = true;
+    }
+
+    return result;
+}
+
+// Codes_SRS_CBS_09_001: [ The `ASYNC_OPERATION_HANDLE` cancel function shall cancel the underlying amqp management operation, remove this operation from the pending list, destroy this async operation. ]
+static void cbs_put_token_cancel_handler(ASYNC_OPERATION_HANDLE put_token_operation)
+{
+    CBS_OPERATION* cbs_operation = GET_ASYNC_OPERATION_CONTEXT(CBS_OPERATION, put_token_operation);
+
+    if (async_operation_cancel(cbs_operation->amqp_management_async_context) != 0)
+    {
+        LogError("Failed canceling the put token async operation.");
+    }
+
+    if (singlylinkedlist_remove_if(cbs_operation->pending_operations, remove_pending_cbs_operation, cbs_operation) != 0)
+    {
+        LogError("Failed removing CBS_OPERATION from pending list");
+    }
+}
+
+ASYNC_OPERATION_HANDLE cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, const char* token, ON_CBS_OPERATION_COMPLETE on_cbs_put_token_complete, void* on_cbs_put_token_complete_context)
+{
+    ASYNC_OPERATION_HANDLE result;
 
     /* Codes_SRS_CBS_01_083: [ `on_cbs_put_token_complete_context` shall be allowed to be NULL. ]*/
     if ((cbs == NULL) ||
@@ -474,14 +515,14 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
         /* Codes_SRS_CBS_01_050: [ If any of the arguments `cbs`, `type`, `audience`, `token` or `on_cbs_put_token_complete` is NULL `cbs_put_token_async` shall fail and return a non-zero value. ]*/
         LogError("Bad arguments: cbs = %p, type = %p, audience = %p, token = %p, on_cbs_put_token_complete = %p",
             cbs, type, audience, token, on_cbs_put_token_complete);
-        result = MU_FAILURE;
+        result = NULL;
     }
     else if ((cbs->cbs_state == CBS_STATE_CLOSED) ||
         (cbs->cbs_state == CBS_STATE_ERROR))
     {
-        /* Codes_SRS_CBS_01_058: [ If `cbs_put_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return a non-zero value. ]*/
+        /* Codes_SRS_CBS_01_058: [ If `cbs_put_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return `NULL`. ]*/
         LogError("put token called while closed or in error");
-        result = MU_FAILURE;
+        result = NULL;
     }
     else
     {
@@ -491,7 +532,7 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
         {
             /* Codes_SRS_CBS_01_072: [ If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. ]*/
             LogError("message_create failed");
-            result = MU_FAILURE;
+            result = NULL;
         }
         else
         {
@@ -500,7 +541,7 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
             {
                 /* Codes_SRS_CBS_01_072: [ If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                 LogError("Failed creating token AMQP value");
-                result = MU_FAILURE;
+                result = NULL;
             }
             else
             {
@@ -509,7 +550,7 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
                 {
                     /* Codes_SRS_CBS_01_072: [ If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                     LogError("Failed setting the token in the message body");
-                    result = MU_FAILURE;
+                    result = NULL;
                 }
                 else
                 {
@@ -518,13 +559,13 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
                     {
                         /* Codes_SRS_CBS_01_072: [ If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                         LogError("Failed creating application properties map");
-                        result = MU_FAILURE;
+                        result = NULL;
                     }
                     else
                     {
                         if (add_string_key_value_pair_to_map(application_properties, "name", audience) != 0)
                         {
-                            result = MU_FAILURE;
+                            result = NULL;
                         }
                         else
                         {
@@ -532,30 +573,33 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
                             {
                                 /* Codes_SRS_CBS_01_072: [ If constructing the message fails, `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                                 LogError("Failed setting message application properties");
-                                result = MU_FAILURE;
+                                result = NULL;
                             }
                             else
                             {
-                                CBS_OPERATION* cbs_operation = (CBS_OPERATION*)malloc(sizeof(CBS_OPERATION));
-                                if (cbs_operation == NULL)
+                                result = CREATE_ASYNC_OPERATION(CBS_OPERATION, cbs_put_token_cancel_handler);
+
+                                if (result == NULL)
                                 {
-                                    LogError("Failed allocating CBS operation instance");
-                                    result = MU_FAILURE;
+                                    LogError("Failed allocating async operation context");
                                 }
                                 else
                                 {
+                                    CBS_OPERATION* cbs_operation = GET_ASYNC_OPERATION_CONTEXT(CBS_OPERATION, result);
+
                                     LIST_ITEM_HANDLE list_item;
 
                                     cbs_operation->on_cbs_operation_complete = on_cbs_put_token_complete;
                                     cbs_operation->on_cbs_operation_complete_context = on_cbs_put_token_complete_context;
                                     cbs_operation->pending_operations = cbs->pending_operations;
+                                    cbs_operation->token_operation_async_context = result;
 
                                     list_item = singlylinkedlist_add(cbs->pending_operations, cbs_operation);
                                     if (list_item == NULL)
                                     {
-                                        free(cbs_operation);
                                         LogError("Failed adding pending operation to list");
-                                        result = MU_FAILURE;
+                                        async_operation_destroy(result);
+                                        result = NULL;
                                     }
                                     else
                                     {
@@ -569,18 +613,20 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
                                         /* Codes_SRS_CBS_01_005: [ operation    No    string    "put-token" ]*/
                                         /* Codes_SRS_CBS_01_006: [ Type    No    string    The type of the token being put, e.g., "amqp:jwt". ]*/
                                         /* Codes_SRS_CBS_01_007: [ name    No    string    The "audience" to which the token applies. ]*/
-                                        if (amqp_management_execute_operation_async(cbs->amqp_management, "put-token", type, NULL, message, on_amqp_management_execute_operation_complete, list_item) != 0)
+                                        
+                                        cbs_operation->amqp_management_async_context = amqp_management_execute_operation_async(cbs->amqp_management, "put-token", type, NULL, message, on_amqp_management_execute_operation_complete, list_item);
+
+                                        if (cbs_operation->amqp_management_async_context == NULL)
                                         {
                                             singlylinkedlist_remove(cbs->pending_operations, list_item);
-                                            free(cbs_operation);
                                             /* Codes_SRS_CBS_01_084: [ If `amqp_management_execute_operation_async` fails `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                                             LogError("Failed starting AMQP management operation");
-                                            result = MU_FAILURE;
+                                            async_operation_destroy(result);
+                                            result = NULL;
                                         }
                                         else
                                         {
-                                            /* Codes_SRS_CBS_01_081: [ On success `cbs_put_token_async` shall return 0. ]*/
-                                            result = 0;
+                                            /* Codes_SRS_CBS_01_081: [ On success `cbs_put_token_async` shall return an ASYNC_OPERATION_HANDLE. ]*/
                                         }
                                     }
                                 }
@@ -601,9 +647,9 @@ int cbs_put_token_async(CBS_HANDLE cbs, const char* type, const char* audience, 
     return result;
 }
 
-int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audience, ON_CBS_OPERATION_COMPLETE on_cbs_delete_token_complete, void* on_cbs_delete_token_complete_context)
+ASYNC_OPERATION_HANDLE cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audience, ON_CBS_OPERATION_COMPLETE on_cbs_delete_token_complete, void* on_cbs_delete_token_complete_context)
 {
-    int result;
+    ASYNC_OPERATION_HANDLE result;
 
     /* Codes_SRS_CBS_01_086: [ `on_cbs_delete_token_complete_context` shall be allowed to be NULL. ]*/
     if ((cbs == NULL) ||
@@ -614,14 +660,14 @@ int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audienc
         /* Codes_SRS_CBS_01_060: [ If any of the arguments `cbs`, `type`, `audience` or `on_cbs_delete_token_complete` is NULL `cbs_put_token_async` shall fail and return a non-zero value. ]*/
         LogError("Bad arguments: cbs = %p, type = %p, audience = %p, on_cbs_delete_token_complete = %p",
             cbs, type, audience, on_cbs_delete_token_complete);
-        result = MU_FAILURE;
+        result = NULL;
     }
     else if ((cbs->cbs_state == CBS_STATE_CLOSED) ||
         (cbs->cbs_state == CBS_STATE_ERROR))
     {
-        /* Codes_SRS_CBS_01_067: [ If `cbs_delete_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return a non-zero value. ]*/
+        /* Codes_SRS_CBS_01_067: [ If `cbs_delete_token_async` is called when the CBS instance is not yet open or in error, it shall fail and return `NULL`. ]*/
         LogError("put token called while closed or in error");
-        result = MU_FAILURE;
+        result = NULL;
     }
     else
     {
@@ -632,7 +678,7 @@ int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audienc
         {
             /* Codes_SRS_CBS_01_071: [ If constructing the message fails, `cbs_delete_token_async` shall fail and return a non-zero value. ]*/
             LogError("message_create failed");
-            result = MU_FAILURE;
+            result = NULL;
         }
         else
         {
@@ -641,13 +687,13 @@ int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audienc
             {
                 /* Codes_SRS_CBS_01_071: [ If constructing the message fails, `cbs_delete_token_async` shall fail and return a non-zero value. ]*/
                 LogError("Failed creating application properties map");
-                result = MU_FAILURE;
+                result = NULL;
             }
             else
             {
                 if (add_string_key_value_pair_to_map(application_properties, "name", audience) != 0)
                 {
-                    result = MU_FAILURE;
+                    result = NULL;
                 }
                 else
                 {
@@ -656,30 +702,33 @@ int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audienc
                     {
                         /* Codes_SRS_CBS_01_071: [ If constructing the message fails, `cbs_delete_token_async` shall fail and return a non-zero value. ]*/
                         LogError("Failed setting message application properties");
-                        result = MU_FAILURE;
+                        result = NULL;
                     }
                     else
                     {
-                        CBS_OPERATION* cbs_operation = (CBS_OPERATION*)malloc(sizeof(CBS_OPERATION));
-                        if (cbs_operation == NULL)
+                        result = CREATE_ASYNC_OPERATION(CBS_OPERATION, cbs_put_token_cancel_handler);
+
+                        if (result == NULL)
                         {
-                            LogError("Failed allocating CBS operation instance");
-                            result = MU_FAILURE;
+                            LogError("Failed allocating async operation context");
                         }
                         else
                         {
+                            CBS_OPERATION* cbs_operation = GET_ASYNC_OPERATION_CONTEXT(CBS_OPERATION, result);
+
                             LIST_ITEM_HANDLE list_item;
 
                             cbs_operation->on_cbs_operation_complete = on_cbs_delete_token_complete;
                             cbs_operation->on_cbs_operation_complete_context = on_cbs_delete_token_complete_context;
                             cbs_operation->pending_operations = cbs->pending_operations;
+                            cbs_operation->token_operation_async_context = result;
 
                             list_item = singlylinkedlist_add(cbs->pending_operations, cbs_operation);
                             if (list_item == NULL)
                             {
-                                free(cbs_operation);
                                 LogError("Failed adding pending operation to list");
-                                result = MU_FAILURE;
+                                async_operation_destroy(result);
+                                result = NULL;
                             }
                             else
                             {
@@ -694,18 +743,19 @@ int cbs_delete_token_async(CBS_HANDLE cbs, const char* type, const char* audienc
                                 /* Codes_SRS_CBS_01_022: [ operation    Yes    string    "delete-token" ]*/
                                 /* Codes_SRS_CBS_01_023: [ Type    Yes    string    The type of the token being deleted, e.g., "amqp:jwt". ]*/
                                 /* Codes_SRS_CBS_01_024: [ name    Yes    string    The "audience" of the token being deleted. ]*/
-                                if (amqp_management_execute_operation_async(cbs->amqp_management, "delete-token", type, NULL, message, on_amqp_management_execute_operation_complete, list_item) != 0)
+                                cbs_operation->amqp_management_async_context = amqp_management_execute_operation_async(cbs->amqp_management, "delete-token", type, NULL, message, on_amqp_management_execute_operation_complete, list_item);
+                                
+                                if (cbs_operation->amqp_management_async_context == NULL)
                                 {
                                     /* Codes_SRS_CBS_01_087: [ If `amqp_management_execute_operation_async` fails `cbs_put_token_async` shall fail and return a non-zero value. ]*/
                                     singlylinkedlist_remove(cbs->pending_operations, list_item);
-                                    free(cbs_operation);
                                     LogError("Failed starting AMQP management operation");
-                                    result = MU_FAILURE;
+                                    async_operation_destroy(result);
+                                    result = NULL;
                                 }
                                 else
                                 {
-                                    /* Codes_SRS_CBS_01_082: [ On success `cbs_delete_token_async` shall return 0. ]*/
-                                    result = 0;
+                                    /* Codes_SRS_CBS_01_082: [ On success `cbs_delete_token_async` shall return an ASYNC_OPERATION_HANDLE. ]*/
                                 }
                             }
                         }

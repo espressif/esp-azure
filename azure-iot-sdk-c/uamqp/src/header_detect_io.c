@@ -70,8 +70,11 @@ static void destroy_io_chain(HEADER_DETECT_IO_INSTANCE* header_detect_io)
             LogError("Cannot remove detected IO from list");
         }
 
-        xio_destroy(chained_io->detected_io);
-        free(chained_io);
+        if (chained_io != NULL)
+        {
+            xio_destroy(chained_io->detected_io);
+            free(chained_io);
+        }
 
         list_item = singlylinkedlist_get_head_item(header_detect_io->chained_io_list);
     }
@@ -825,7 +828,10 @@ static void header_detect_io_dowork(CONCRETE_IO_HANDLE header_detect_io)
             while (list_item != NULL)
             {
                 CHAINED_IO* chained_io = (CHAINED_IO*)singlylinkedlist_item_get_value(list_item);
-                xio_dowork(chained_io->detected_io);
+                if (chained_io != NULL)
+                {
+                    xio_dowork(chained_io->detected_io);
+                }
 
                 list_item = singlylinkedlist_get_next_item(list_item);
             }

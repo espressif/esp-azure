@@ -211,3 +211,5 @@ build_all/windows/nuget.exe
 /deps/ctest/
 /deps/testrunnerswitcher/
 /deps/umock-c/
+/.vs
+/out/build

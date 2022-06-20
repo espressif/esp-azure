@@ -7,7 +7,7 @@ This function is used to create a SAS token.
 
 ## References
 [Keyed-Hashing for Message Authentication, RFC2104](https://www.ietf.org/rfc/rfc2104.txt)
-[SASToken format](https://azure.microsoft.com/en-us/documentation/articles/storage-dotnet-shared-access-signature-part-1/)
+[SASToken format](https://azure.microsoft.com/documentation/articles/storage-dotnet-shared-access-signature-part-1/)
 
 
 ## Exposed API

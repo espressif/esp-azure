@@ -238,14 +238,14 @@ The
 [tlsio_openssl_compact for ESP32](https://github.com/Azure/azure-iot-pal-esp32/blob/master/pal/src/tlsio_openssl_compact.c)
 abstracts its operating system dependencies using these two files:
 - [socket_async.c](https://github.com/Azure/azure-c-shared-utility/blob/master/pal/socket_async.c)
-- [dns_resolver.c](https://github.com/Azure/azure-c-shared-utility/blob/master/pal/dns_resolver.c)
+- [dns_resolver_ares.c](https://github.com/Azure/azure-c-shared-utility/blob/master/src/dns_resolver_ares.c)
 
 It is recommended that all _direct_ tlsio implementatons follow this pattern.
 
 The
 [socket_async.c](https://github.com/Azure/azure-c-shared-utility/blob/master/pal/socket_async.c)
 and
-[dns_resolver.c](https://github.com/Azure/azure-c-shared-utility/blob/master/pal/dns_resolver.c)
+[dns_resolver_ares.c](https://github.com/Azure/azure-c-shared-utility/blob/master/src/dns_resolver_ares.c)
 files can be re-used without change for most socket implementations by merely changing the content of 
 the included "socket_async_os.h" file, which contains os-specific headers.
 
@@ -274,6 +274,5 @@ Newly supported devices are likely to use a wide variety of possible build syste
 tree can be prescribed. The [support repository for ESP32](https://github.com/Azure/azure-iot-pal-esp32) is the
 one we recommend considering as a model for creating a new device support repository.
 
-##### Last step: profit!
 
 

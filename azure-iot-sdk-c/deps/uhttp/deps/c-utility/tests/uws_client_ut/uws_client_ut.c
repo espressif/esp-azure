@@ -7075,6 +7075,7 @@ TEST_FUNCTION(uws_retrieve_options_calls_the_underlying_xio_retrieve_options_and
     EXPECTED_CALL(OptionHandler_Create(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(xio_retrieveoptions(TEST_IO_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_AddOption(TEST_OPTIONHANDLER_HANDLE, "uWSClientOptions", TEST_IO_OPTIONHANDLER_HANDLE));
+    STRICT_EXPECTED_CALL(OptionHandler_Destroy(IGNORED_PTR_ARG));
 
     // act
     result = uws_client_retrieve_options(uws_client);
@@ -7160,8 +7161,8 @@ TEST_FUNCTION(when_OptionHandler_AddOption_fails_then_uws_retrieve_options_fails
     STRICT_EXPECTED_CALL(xio_retrieveoptions(TEST_IO_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_AddOption(TEST_OPTIONHANDLER_HANDLE, "uWSClientOptions", TEST_IO_OPTIONHANDLER_HANDLE))
         .SetReturn(OPTIONHANDLER_ERROR);
-    STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_IO_OPTIONHANDLER_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_OPTIONHANDLER_HANDLE));
+    STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_IO_OPTIONHANDLER_HANDLE));
 
     // act
     result = uws_client_retrieve_options(uws_client);
@@ -7189,12 +7190,13 @@ TEST_FUNCTION(uws_client_clone_option_calls_xio_cloneoption)
     uws_client = uws_client_create("test_host", 444, "/aaa", true, protocols, sizeof(protocols) / sizeof(protocols[0]));
     (void)uws_client_retrieve_options(uws_client);
     umock_c_reset_all_calls();
+    STRICT_EXPECTED_CALL(OptionHandler_Clone(IGNORED_PTR_ARG));
 
     // act
     result = g_clone_option("uWSClientOptions", (void*)0x4243);
 
     // assert
-    ASSERT_ARE_EQUAL(void_ptr, (void*)0x4243, result);
+    ASSERT_ARE_EQUAL(void_ptr, (void*)0x4447, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup

@@ -1,7 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 #this is CMakeLists for serializer
 
 option(use_floats "if use_floats is used, serializer will use floats in its typesystem" ON)
@@ -99,17 +99,7 @@ if (${build_as_dynamic})
     )
     set (install_libs ${install_libs} serializer_dll)
 endif()
-setSdkTargetBuildProperties(serializer)
-
-if (NOT ${skip_samples})
-    if(WIN32)
-        if (NOT ${ARCHITECTURE} STREQUAL "ARM")
-            add_subdirectory(samples)
-        endif()
-    else()
-        add_subdirectory(samples)
-    endif()
-endif()
+applyXcodeBuildFlagsIfNeeded(serializer)
 
 if(NOT IN_OPENWRT)
     # Disable tests for OpenWRT

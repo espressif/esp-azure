@@ -1110,7 +1110,7 @@ static void frame_codec_error(void* context)
 {
     /* Bug: some error handling should happen here
     Filed: uAMQP: frame_codec error and amqp_frame_codec_error should handle the errors */
-    LogError("A frame_codec_error occured");
+    LogError("A frame_codec_error occurred");
     (void)context;
 }
 
@@ -1118,7 +1118,7 @@ static void amqp_frame_codec_error(void* context)
 {
     /* Bug: some error handling should happen here
     Filed: uAMQP: frame_codec error and amqp_frame_codec_error should handle the errors */
-    LogError("An amqp_frame_codec_error occured");
+    LogError("An amqp_frame_codec_error occurred");
     (void)context;
 }
 

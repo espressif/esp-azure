@@ -24,7 +24,7 @@ IMPLEMENT_MOCKABLE_FUNCTION(, char*, vsprintf_char, const char*, format, va_list
     }
     else
     {
-        result = (char*)malloc((neededSize + 1) * sizeof(char));
+        result = (char*)malloc(((unsigned long long)neededSize + 1) * sizeof(char));
         if (result == NULL)
         {
             LogError("failure in malloc");
@@ -32,7 +32,7 @@ IMPLEMENT_MOCKABLE_FUNCTION(, char*, vsprintf_char, const char*, format, va_list
         }
         else
         {
-            if (vsnprintf(result, neededSize + 1, format, va) != neededSize)
+            if (vsnprintf(result, (unsigned long long)neededSize + 1, format, va) != neededSize)
             {
                 LogError("inconsistent vsnprintf behavior");
                 free(result);
@@ -54,7 +54,7 @@ IMPLEMENT_MOCKABLE_FUNCTION(, wchar_t*, vsprintf_wchar, const wchar_t*, format, 
     }
     else
     {
-        result = (wchar_t*)malloc((neededSize + 1)*sizeof(wchar_t));
+        result = (wchar_t*)malloc(((unsigned long long)neededSize + 1)*sizeof(wchar_t));
         if (result == NULL)
         {
             LogError("failure in malloc");
@@ -62,7 +62,7 @@ IMPLEMENT_MOCKABLE_FUNCTION(, wchar_t*, vsprintf_wchar, const wchar_t*, format, 
         }
         else
         {
-            if (vswprintf(result, neededSize + 1, format, va) != neededSize)
+            if (vswprintf(result, (unsigned long long)neededSize + 1, format, va) != neededSize)
             {
                 LogError("inconsistent vswprintf behavior");
                 free(result);

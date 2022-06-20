@@ -8,6 +8,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/gballoc.h"
 #include "azure_c_shared_utility/strings.h"
+#include "azure_c_shared_utility/safe_math.h"
 
 #include "azure_c_shared_utility/azure_base32.h"
 
@@ -71,9 +72,14 @@ static char* base32_encode_impl(const unsigned char* source, size_t src_size)
     char* result;
 
     // Allocate target buffer
-    size_t output_len = base32_encoding_length(src_size);
+    size_t output_len = safe_add_size_t(base32_encoding_length(src_size), 1);
+    if (output_len == SIZE_MAX)
+    {
+        result = NULL;
+        LogError("invalid src_size");
+    }
     /* Codes_SRS_BASE32_07_009: [ base32_encode_impl shall allocate the buffer to the size of the encoding value. ] */
-    if ((result = (char*)malloc(output_len + 1)) == NULL)
+    else if ((result = (char*)malloc(output_len)) == NULL)
     {
         LogError("Failure allocating output buffer");
     }
@@ -91,11 +97,11 @@ static char* base32_encode_impl(const unsigned char* source, size_t src_size)
         unsigned char pos7 = 0;
         unsigned char pos8 = 0;
 
-        memset(result, 0, output_len + 1);
+        memset(result, 0, output_len);
 
         // Go through the source buffer sectioning off blocks of 5
         /* Codes_SRS_BASE32_07_010: [ base32_encode_impl shall look through source and separate each block into 5 bit chunks ] */
-        while (src_size >= 1 && result != NULL)
+        while (src_size >= 1)
         {
             pos1 = pos2 = pos3 = pos4 = pos5 = pos6 = pos7 = pos8 = 0;
             block_len = src_size > TARGET_BLOCK_SIZE ? TARGET_BLOCK_SIZE : src_size;
@@ -139,6 +145,14 @@ static char* base32_encode_impl(const unsigned char* source, size_t src_size)
                 case 4: pos8 = 32; // fall through
                 case 5:
                     break;
+            }
+
+            if ((result_len + 8) > output_len)
+            {
+                LogError("result buffer is too small");
+                free(result);
+                result = NULL;
+                break;
             }
 
             /* Codes_SRS_BASE32_07_011: [ base32_encode_impl shall then map the 5 bit chunks into one of the BASE32 values (a-z,2,3,4,5,6,7) values. ] */

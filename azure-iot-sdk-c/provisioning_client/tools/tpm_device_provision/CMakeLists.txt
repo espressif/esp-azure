@@ -2,7 +2,7 @@
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #This is the CMakeLists.txt for testing
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 compileAsC99()
 
@@ -28,6 +28,9 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/adapters)
 
 add_executable(tpm_device_provision ${dev_auth_prov_c_files} ${dev_auth_prov_h_files})
 
-linkSharedUtil(tpm_device_provision)
-link_security_client(tpm_device_provision)
-target_link_libraries(tpm_device_provision parson)
+target_link_libraries(tpm_device_provision
+    prov_auth_client
+    hsm_security_client
+    aziotsharedutil
+    parson
+)

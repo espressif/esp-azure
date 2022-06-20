@@ -484,17 +484,24 @@ int SHA512Input(SHA512Context *context,
         return context->Corrupted;
 
     while (length-- && !context->Corrupted) {
-        context->Message_Block[context->Message_Block_Index++] =
-            (*message_array & 0xFF);
+        if (context->Message_Block_Index < SHA512_Message_Block_Size)
+        {
+            context->Message_Block[context->Message_Block_Index++] =
+                (*message_array & 0xFF);
 
-        if (!SHA384_512AddLength(context, 8) &&
-            (context->Message_Block_Index == SHA512_Message_Block_Size))
-            SHA384_512ProcessMessageBlock(context);
+            if (!SHA384_512AddLength(context, 8) &&
+                (context->Message_Block_Index == SHA512_Message_Block_Size))
+                SHA384_512ProcessMessageBlock(context);
 
-        message_array++;
+            message_array++;
+        }
+        else
+        {
+            context->Corrupted = shaBadParam;
+        }
     }
 
-    return shaSuccess;
+    return context->Corrupted;
 }
 
 /*

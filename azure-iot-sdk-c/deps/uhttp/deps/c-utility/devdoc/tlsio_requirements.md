@@ -490,3 +490,38 @@ appear in the implementation code.
 
 **SRS_TLSIO_30_201: [** The "high-level retry sequence" shall succeed after an injected fault which causes 
  `on_io_error` to be called. **]**
+
+## API Call Sequence Examples
+
+### Connect example
+
+First `IoTHubDeviceClient_LL_SetOption` will call:
+1. `tlsio_openssl_create`
+1. `tlsio_openssl_setoption`
+
+Each subsequent `IoTHubDeviceClient_LL_SetOption`
+1. `tlsio_openssl_setoption`
+
+First IoTHubDeviceClient_LL_DoWork:
+1. `tlsio_openssl_open`
+
+### Telemetry Send example
+
+Looping over:
+1. `tlsio_openssl_dowork`
+1. `tlsio_openssl_send`
+
+### Close example
+
+Application calls `IoTHubDeviceClient_LL_Destroy` (`DisconnectFromClient` in MQTT):
+1. `tlsio_openssl_close`
+1. `tlsio_openssl_destroy`
+
+### Retry example
+
+I/O failure leads to retry (`ResetConnectionIfNecessary` for MQTT):
+1. `tlsio_openssl_retrieveoptions`
+1. `tlsio_openssl_destroy`
+1. `tlsio_openssl_create`
+1. `tlsio_openssl_setoption`  - Repeats multiple times as it clones all configuration options.
+1. `tlsio_openssl_open`

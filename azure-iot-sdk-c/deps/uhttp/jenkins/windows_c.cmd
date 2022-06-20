@@ -37,6 +37,13 @@ mkdir %build-root%\cmake\%CMAKE_DIR%
 rem no error checking
 pushd %build-root%\cmake\%CMAKE_DIR%
 
+echo ***checking msbuild***
+where /q msbuild
+IF ERRORLEVEL 1 (
+echo ***setting VC paths***
+    IF EXIST "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat" call "%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Enterprise\Common7\Tools\VsMSBuildCmd.bat"
+)
+where msbuild
 
 cmake %build-root% -Drun_unittests:BOOL=ON
 if not !ERRORLEVEL!==0 exit /b !ERRORLEVEL!

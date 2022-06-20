@@ -27,6 +27,8 @@ extern "C"
     static STATIC_VAR_UNUSED const char* OPTION_KEEP_ALIVE = "keepalive";
     static STATIC_VAR_UNUSED const char* OPTION_CONNECTION_TIMEOUT = "connect_timeout";
 
+    /* None of the OPTION_PROXY_* options below are implemented.  Use OPTION_HTTP_PROXY 
+    from shared_util_options.h in https://github.com/Azure/azure-c-shared-utility/ repo instead */
     static STATIC_VAR_UNUSED const char* OPTION_PROXY_HOST = "proxy_address";
     static STATIC_VAR_UNUSED const char* OPTION_PROXY_USERNAME = "proxy_username";
     static STATIC_VAR_UNUSED const char* OPTION_PROXY_PASSWORD = "proxy_password";
@@ -41,7 +43,15 @@ extern "C"
     /* DEPRECATED:: OPTION_MESSAGE_TIMEOUT is DEPRECATED! Use OPTION_SERVICE_SIDE_KEEP_ALIVE_FREQ_SECS for AMQP; MQTT has no option available. OPTION_MESSAGE_TIMEOUT legacy variable will be kept for back-compat.  */
     static STATIC_VAR_UNUSED const char* OPTION_MESSAGE_TIMEOUT = "messageTimeout";
     static STATIC_VAR_UNUSED const char* OPTION_BLOB_UPLOAD_TIMEOUT_SECS = "blob_upload_timeout_secs";
+
+    /*
+    * @brief    Set the interface name to use as outgoing network interface for upload to blob.
+    * NOTE: Not all HTTP clients support this option. It is currently only supported when using cURL.
+    */
+    static STATIC_VAR_UNUSED const char* const OPTION_NETWORK_INTERFACE_UPLOAD_TO_BLOB = "network_interface_upload_to_blob";
     static STATIC_VAR_UNUSED const char* OPTION_PRODUCT_INFO = "product_info";
+
+    static STATIC_VAR_UNUSED const char* OPTION_BLOB_UPLOAD_TLS_RENEGOTIATION = "blob_upload_tls_renegotiation";
 
     /*
     * @brief    Specifies the Digital Twin Model Id of the connection. Only valid for use with MQTT Transport
@@ -85,6 +95,20 @@ extern "C"
     static STATIC_VAR_UNUSED const char* OPTION_DIAGNOSTIC_SAMPLING_PERCENTAGE = "diag_sampling_percentage";
 
     static STATIC_VAR_UNUSED const char* OPTION_DO_WORK_FREQUENCY_IN_MS = "do_work_freq_ms";
+
+// Minimum percentage (in the 0 to 1 range) of multiplexed registered devices that must be failing for a transport-wide reconnection to be triggered.
+// A value of zero results in a single registered device to be able to cause a general transport reconnection 
+// (thus causing all other multiplexed registered devices to be also reconnected, meaning an agressive reconnection strategy).
+// Setting this parameter to one indicates that 100% of the multiplexed registered devices must be failing in parallel for a 
+// transport-wide reconnection to be triggered (resulting in a very lenient reconnection strategy).  
+#define DEVICE_MULTIPLEXING_FAULTY_DEVICE_RATIO_RECONNECTION_THRESHOLD 0
+
+// Minimum number of consecutive failures an individual registered device must have to be considered a faulty device.
+// This is used along with DEVICE_MULTIPLEXING_FAULTY_DEVICE_RATIO_RECONNECTION_THRESHOLD to trigger transport-wide reconnections.
+// The device may fail to authenticate, timeout establishing the connection, get disconnected by the service for some reason or fail sending messages.
+// In all these cases the failures are cummulatively counted; if the count is equal to or greater than DEVICE_FAILURE_COUNT_RECONNECTION_THRESHOLD
+// the device is considered to be in a faulty state.    
+#define DEVICE_FAILURE_COUNT_RECONNECTION_THRESHOLD 5
 
 #ifdef __cplusplus
 }

@@ -2,23 +2,18 @@
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #this is CMakeLists.txt for iothubclient_mqtt_dm_e2e_sfc
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 if(NOT (${use_mqtt}))
     message(FATAL_ERROR "iothubclient_mqtt_dm_e2e_sfc being generated without MQTT support")
 endif()
 
-compileAsC11()
+compileAsC99()
 set(theseTestsName iothubclient_mqtt_dm_e2e_sfc)
 
 set(${theseTestsName}_test_files
         ${theseTestsName}.c
     ../common_device_method_e2e/iothubclient_common_device_method_e2e.c
-)
-
-set(${theseTestsName}_nuget_c_files
-        ${theseTestsName}.c
-        ../common_device_method_e2e/iothubclient_common_device_method_e2e.c
 )
 
 set(${theseTestsName}_c_files
@@ -70,15 +65,6 @@ if(WIN32)
         linkUAMQP(${theseTestsName}_exe)
         linkMqttLibrary(${theseTestsName}_exe)
     endif()
-
-    if(TARGET ${theseTestsName}_nuget_exe)
-           target_link_libraries(${theseTestsName}_nuget_exe
-                   iothub_test
-                   iothub_service_client
-                   rpcrt4
-           )
-    endif()
-
 else()
     if(UNIX) #LINUX OR APPLE
         find_package(PkgConfig REQUIRED)

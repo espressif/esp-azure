@@ -2094,6 +2094,7 @@ TEST_FUNCTION(wsio_retrieveoptions_creates_an_option_handler_with_the_value_obta
     EXPECTED_CALL(OptionHandler_Create(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(uws_client_retrieve_options(TEST_UWS_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_AddOption(TEST_OPTIONHANDLER_HANDLE, "WSIOOptions", TEST_UWS_CLIENT_OPTIONHANDLER_HANDLE));
+    STRICT_EXPECTED_CALL(OptionHandler_Destroy(IGNORED_PTR_ARG));
 
     // act
     result = wsio_get_interface_description()->concrete_io_retrieveoptions(wsio);
@@ -2170,8 +2171,8 @@ TEST_FUNCTION(when_OptionHandler_AddOption_fails_then_wsio_retrieveoptions_fails
     STRICT_EXPECTED_CALL(uws_client_retrieve_options(TEST_UWS_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_AddOption(TEST_OPTIONHANDLER_HANDLE, "WSIOOptions", TEST_UWS_CLIENT_OPTIONHANDLER_HANDLE))
         .SetReturn(OPTIONHANDLER_ERROR);
-    STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_UWS_CLIENT_OPTIONHANDLER_HANDLE));
     STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_OPTIONHANDLER_HANDLE));
+    STRICT_EXPECTED_CALL(OptionHandler_Destroy(TEST_UWS_CLIENT_OPTIONHANDLER_HANDLE));
 
     // act
     result = wsio_get_interface_description()->concrete_io_retrieveoptions(wsio);
@@ -2240,12 +2241,13 @@ TEST_FUNCTION(wsio_clone_option_with_WSIOOptions_clones_the_option_handler)
     wsio = wsio_get_interface_description()->concrete_io_create(&default_wsio_config);
     (void)wsio_get_interface_description()->concrete_io_retrieveoptions(wsio);
     umock_c_reset_all_calls();
+    STRICT_EXPECTED_CALL(OptionHandler_Clone(IGNORED_PTR_ARG));
 
     // act
     result = g_clone_option("WSIOOptions", (void*)0x4243);
 
     // assert
-    ASSERT_ARE_EQUAL(void_ptr, (void*)0x4243, result);
+    ASSERT_ARE_EQUAL(void_ptr, (void*)0x4246, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup

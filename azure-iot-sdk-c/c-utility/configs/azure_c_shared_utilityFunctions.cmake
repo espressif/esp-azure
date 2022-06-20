@@ -220,6 +220,7 @@ function(build_test_artifacts whatIsBuilding use_gballoc)
     endif()
 
     #setting logging_files
+    add_definitions(-DLOGGER_DISABLE_PAL)
     if(DEFINED SHARED_UTIL_SRC_FOLDER)
         set(logging_files ${XLOGGING_C_FILE} ${LOGGING_C_FILE})
     elseif(DEFINED SHARED_UTIL_FOLDER)
@@ -497,6 +498,8 @@ function(build_c_test_artifacts whatIsBuilding use_gballoc folder)
         include_directories(${sharedutil_include_directories})
     endif()
 
+    add_definitions(-DLOGGER_DISABLE_PAL)
+
     #setting logging_files
     if(DEFINED SHARED_UTIL_SRC_FOLDER)
         set(logging_files ${XLOGGING_C_FILE} ${LOGGING_C_FILE})
@@ -623,8 +626,45 @@ function(build_c_test_longhaul_test test_name test_c_files test_h_files)
 
     add_executable(${test_name} ${test_c_files} ${test_h_files} ${samples_cert_file})
 
-    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
-    set_tests_properties(${test_name} PROPERTIES TIMEOUT 1296000)
+    set(PARSING_VALGRIND_SUPPRESSIONS_FILE OFF)
+    set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER)
+    foreach(f ${ARGN})
+        set(skip_to_next FALSE)
+        if(${f} STREQUAL "VALGRIND_SUPPRESSIONS_FILE")
+            SET(PARSING_VALGRIND_SUPPRESSIONS_FILE ON)
+            set(skip_to_next TRUE)
+        endif()
+
+        if(NOT skip_to_next)
+            if(PARSING_VALGRIND_SUPPRESSIONS_FILE)
+                set(VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER "--suppressions=${f}")
+            endif()
+        endif()
+    endforeach()
+
+    if(${run_valgrind})
+        find_program(VALGRIND_FOUND NAMES valgrind)
+        if(${VALGRIND_FOUND} STREQUAL VALGRIND_FOUND-NOTFOUND)
+            message(WARNING "run_valgrind was TRUE, but valgrind was not found - there will be no tests run under valgrind")
+        else()
+            # below are the longhaul tests running under valgrind
+            # These are currently disabled because the longhaul containers are still Ubuntu 16 andd need s to upgraded to Ubuntu 18
+
+            #add_test(NAME ${test_name}_valgrind COMMAND valgrind                 --gen-suppressions=all --num-callers=100 --error-exitcode=1 --leak-check=full --track-origins=yes ${VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER} $<TARGET_FILE:${test_name}>)
+            #add_test(NAME ${test_name}_helgrind COMMAND valgrind --tool=helgrind --gen-suppressions=all --num-callers=100 --error-exitcode=1 ${VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER} $<TARGET_FILE:${test_name}>)
+            #add_test(NAME ${test_name}_drd      COMMAND valgrind --tool=drd      --gen-suppressions=all --num-callers=100 --error-exitcode=1 ${VALGRIND_SUPPRESSIONS_FILE_EXTRA_PARAMETER} $<TARGET_FILE:${test_name}>)
+            #set_tests_properties(${test_name}_valgrind PROPERTIES TIMEOUT 1296000)
+            #set_tests_properties(${test_name}_helgrind PROPERTIES TIMEOUT 1296000)
+            #set_tests_properties(${test_name}_drd PROPERTIES TIMEOUT 1296000)
+
+            # run the lonhaul without using valgrind
+            add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
+            set_tests_properties(${test_name} PROPERTIES TIMEOUT 1296000)
+        endif()
+    else()
+        add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
+        set_tests_properties(${test_name} PROPERTIES TIMEOUT 1296000)
+    endif()
 
     target_link_libraries(${test_name}
             iothub_test
@@ -704,6 +744,8 @@ function(set_platform_files c_shared_dir)
         set(TICKCOUTER_C_FILE ${c_shared_dir}/adapters/tickcounter_linux.c PARENT_SCOPE)
         if (${use_default_uuid})
             set(UNIQUEID_C_FILE ${c_shared_dir}/adapters/uniqueid_stub.c PARENT_SCOPE)
+        elseif(AZSPHERE)
+            set(UNIQUEID_C_FILE ${c_shared_dir}/adapters/uniqueid_azsphere.c PARENT_SCOPE)
         else()
             set(UNIQUEID_C_FILE ${c_shared_dir}/adapters/uniqueid_linux.c PARENT_SCOPE)
         endif()

@@ -3,9 +3,7 @@
 
 set(theseTestsName memory_data_ut)
 
-set(${theseTestsName}_test_files
-${theseTestsName}.c
-    )
+generate_cppunittest_wrapper(${theseTestsName})
 
 set(${theseTestsName}_c_files
 ../../src/memory_data.c

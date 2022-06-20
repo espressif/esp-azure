@@ -1,7 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.5)
 
 project(uhttp)
 
@@ -125,6 +125,11 @@ include_directories(${SHARED_UTIL_INC_FOLDER} ${MACRO_UTILS_INC_FOLDER} ${UMOCK_
 include("configs/azure_uhttpFunctions.cmake")
 
 add_library(uhttp ${uhttp_c_files} ${uhttp_h_files})
+target_include_directories(uhttp
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/azureiot>
+)
 setTargetBuildProperties(uhttp)
 target_link_libraries(uhttp aziotsharedutil)
 
@@ -137,8 +142,11 @@ if (NOT ${skip_samples})
     add_subdirectory(samples)
 endif()
 
-# Install uhttp
-set(package_location "cmake")
+# Set CMAKE_INSTALL_LIBDIR if not defined
+include(GNUInstallDirs)
+
+# Install umqtt
+set(package_location "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR)
     set(CMAKE_INSTALL_LIBDIR "lib")
@@ -147,7 +155,7 @@ endif()
 install(TARGETS uhttp EXPORT uhttpTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/../bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot
 )
 install(FILES ${uhttp_h_files} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot/azure_uhttp_c)
@@ -160,11 +168,23 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
-install(
-    FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${PROJECT_NAME}ConfigVersion.cmake"
+configure_file("configs/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${PROJECT_NAME}Config.cmake"
+    COPYONLY
+)
+
+install(EXPORT uhttpTargets
+    FILE
+        "${PROJECT_NAME}Targets.cmake"
     DESTINATION
         ${package_location}
 )
 
+install(
+    FILES
+        "configs/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION
+        ${package_location}
+)
 compileTargetAsC99(uhttp)

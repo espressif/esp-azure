@@ -7,6 +7,8 @@
 #include "azure_c_shared_utility/httpapiex.h"
 #ifdef USE_OPENSSL
 #include "azure_c_shared_utility/tlsio_openssl.h"
+#else
+const IO_INTERFACE_DESCRIPTION* tlsio_openssl_get_interface_description();
 #endif
 #if USE_CYCLONESSL
 #include "azure_c_shared_utility/tlsio_cyclonessl.h"
@@ -39,6 +41,11 @@ int platform_init(void)
     if (result == 0)
     {
         result = tlsio_openssl_init();
+    }
+#elif USE_WOLFSSL
+    if (result == 0)
+    {
+        result = tlsio_wolfssl_init();
     }
 #endif
     return result;
@@ -89,5 +96,7 @@ void platform_deinit(void)
 #endif /* DONT_USE_UPLOADTOBLOB */
 #ifdef USE_OPENSSL
     tlsio_openssl_deinit();
+#elif USE_WOLFSSL
+    tlsio_wolfssl_deinit();
 #endif
 }

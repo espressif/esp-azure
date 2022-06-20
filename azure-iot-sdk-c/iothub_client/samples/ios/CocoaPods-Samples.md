@@ -10,6 +10,10 @@ may be found [here](./CocoaPods.md).
 * An IoT Hub and a connection string for a client device.
 * [Azure IoT Explorer](https://github.com/Azure/azure-iot-explorer) recommended.
 
+For x64 run `sudo gem install cocoapods`
+
+For Apple M1 run `arch -x86_64 sudo gem install cocoapods ffi`
+
 #### 1. Clone the Azure IoT iOS Sample
 
 Change to a location where you would like your samples, and run
@@ -23,18 +27,6 @@ Change your current directory to the iOS sample directory.
 
 `cd azure-iot-samples-ios/quickstart/sample-device/`
 
-#### 3. Update the Podfile
-
-Note: Make sure that XCode does not already have the sample project open. If
-it does, the CocoaPods may not install properly.
-
-Edit the Podfile in a text editor and ensure that the pods are specified with these versions or later:
-
-`'AzureIoTHubClient', '=1.3.8a'`
-`'AzureIoTUtility', '=1.3.8a'`
-`'AzureIoTuMqtt', '=1.3.8a'`
-`'AzureIoTuAmqp', '=1.3.8a'`
-
 #### 3. Install the CocoaPods
 
 Make sure that XCode does not already have the sample project open. If
@@ -44,16 +36,19 @@ Run this command:
 
 `pod install`
 
+For Apple M1 run `arch -x86_64 pod install`
+
 This will cause CocoaPods to read the `Podfile` and install the pods accordingly.
 
-#### 5. Open the XCode workspace
+#### 4. Open the XCode workspace
 
 Double-click the `MQTT Client Sample.xcworkspace` workspace file (**not** the project file) to
 open XCode and select your build target device (iPhone 7 simulator works well).
+(Or in the terminal run `open MQTT Client Sample.xcworkspace`.)
 
 Make sure you open the workspace, and not the similarly-named (without the `WS` suffix) project.
 
-#### 4. Modify your sample file
+#### 5. Modify your sample file
 
 1. Select the MQTT Cleint Sample project, open the MQTT Client Sample folder, and open the ViewController.swift
 2. Add your iot device Connection String to the `private let connectionString` by replacing the empty quotes with your connection string.
@@ -63,7 +58,7 @@ Make sure you open the workspace, and not the similarly-named (without the `WS` 
     * AMQP_Protocol
     Note: HTTP_Protocol does work as well. 
 
-#### 5. Run the app in the simulator
+#### 6. Run the app in the simulator
 
 Start the project (command-R). 
 

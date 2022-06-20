@@ -10,6 +10,7 @@
 #include "azure_c_shared_utility/strings.h"
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xlogging.h"
+#include "azure_c_shared_utility/safe_math.h"
 
 static const char hexToASCII[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
@@ -297,12 +298,23 @@ STRING_HANDLE STRING_new_JSON(const char* source)
         }
         else
         {
-            if ((result = (STRING*)malloc(sizeof(STRING))) == NULL)
+            //size_t malloc_len = vlen + 5 * nControlCharacters + nEscapeCharacters + 3;
+            size_t malloc_len = safe_multiply_size_t(5, nControlCharacters);
+            malloc_len = safe_add_size_t(malloc_len, vlen);
+            malloc_len = safe_add_size_t(malloc_len, nEscapeCharacters);
+            malloc_len = safe_add_size_t(malloc_len, 3);
+
+            if (malloc_len == SIZE_MAX)
+            {
+                result = NULL;
+                LogError("malloc len overflow");
+            }
+            else if ((result = (STRING*)malloc(sizeof(STRING))) == NULL)
             {
                 /*Codes_SRS_STRING_02_021: [If the complete JSON representation cannot be produced, then STRING_new_JSON shall fail and return NULL.] */
                 LogError("malloc json failure");
             }
-            else if ((result->s = (char*)malloc(vlen + 5 * nControlCharacters + nEscapeCharacters + 3)) == NULL)
+            else if ((result->s = (char*)malloc(malloc_len)) == NULL)
             {
                 /*Codes_SRS_STRING_02_021: [If the complete JSON representation cannot be produced, then STRING_new_JSON shall fail and return NULL.] */
                 free(result);
@@ -316,7 +328,7 @@ STRING_HANDLE STRING_new_JSON(const char* source)
                 result->s[pos++] = '"';
                 for (i = 0; i < vlen; i++)
                 {
-                    if (source[i] <= 0x1F)
+                    if ((source[i] <= 0x1F) && ((pos + 6) <= malloc_len))
                     {
                         /*Codes_SRS_STRING_02_019: [If the character code is less than 0x20 then it shall be represented as \u00xx, where xx is the hex representation of the character code.]*/
                         result->s[pos++] = '\\';
@@ -326,34 +338,51 @@ STRING_HANDLE STRING_new_JSON(const char* source)
                         result->s[pos++] = hexToASCII[(source[i] & 0xF0) >> 4]; /*high nibble*/
                         result->s[pos++] = hexToASCII[source[i] & 0x0F]; /*low nibble*/
                     }
-                    else if (source[i] == '"')
+                    else if ((source[i] == '"') && ((pos + 2) <= malloc_len))
                     {
                         /*Codes_SRS_STRING_02_016: [If the character is " (quote) then it shall be repsented as \".] */
                         result->s[pos++] = '\\';
                         result->s[pos++] = '"';
                     }
-                    else if (source[i] == '\\')
+                    else if ((source[i] == '\\') && ((pos + 2) <= malloc_len))
                     {
                         /*Codes_SRS_STRING_02_017: [If the character is \ (backslash) then it shall represented as \\.] */
                         result->s[pos++] = '\\';
                         result->s[pos++] = '\\';
                     }
-                    else if (source[i] == '/')
+                    else if ((source[i] == '/') && ((pos + 2) <= malloc_len))
                     {
                         /*Codes_SRS_STRING_02_018: [If the character is / (slash) then it shall be represented as \/.] */
                         result->s[pos++] = '\\';
                         result->s[pos++] = '/';
                     }
-                    else
+                    else if (pos < malloc_len)
                     {
                         /*Codes_SRS_STRING_02_013: [The string shall copy the characters of source "as they are" (until the '\0' character) with the following exceptions:] */
                         result->s[pos++] = source[i];
                     }
+                    else
+                    {
+                        free(result->s);
+                        free(result);
+                        result = NULL;
+                        break;
+                    }
                 }
-                /*Codes_SRS_STRING_02_020: [The string shall end with " (quote).] */
-                result->s[pos++] = '"';
-                /*zero terminating it*/
-                result->s[pos] = '\0';
+
+                if ((pos + 1) < malloc_len)
+                {
+                    /*Codes_SRS_STRING_02_020: [The string shall end with " (quote).] */
+                    result->s[pos++] = '"';
+                    /*zero terminating it*/
+                    result->s[pos] = '\0';
+                }
+                else
+                {
+                    free(result->s);
+                    free(result);
+                    result = NULL;
+                }
             }
         }
 

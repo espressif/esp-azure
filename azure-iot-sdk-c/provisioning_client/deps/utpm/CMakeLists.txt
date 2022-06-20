@@ -1,7 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.5)
 
 project(utpm)
 
@@ -163,6 +163,11 @@ endif (WIN32)
 
 add_library(utpm ${utpm_c_files} ${utpm_h_files})
 target_link_libraries(utpm aziotsharedutil)
+target_include_directories(utpm
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/azureiot/include>
+)
 
 if (${use_emulator})
 else ()
@@ -194,7 +199,7 @@ endif()
 install(TARGETS utpm EXPORT utpmTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/../bin
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot
 )
 install(FILES ${utpm_h_files} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/azureiot/azure_utpm_c)

@@ -18,6 +18,9 @@ extern "C" {
 
 extern const char* const OPTION_WOLFSSL_SET_DEVICE_ID;
 
+MOCKABLE_FUNCTION(, int, tlsio_wolfssl_init);
+MOCKABLE_FUNCTION(, void, tlsio_wolfssl_deinit);
+
 MOCKABLE_FUNCTION(, CONCRETE_IO_HANDLE, tlsio_wolfssl_create, void*, io_create_parameters);
 MOCKABLE_FUNCTION(, void, tlsio_wolfssl_destroy, CONCRETE_IO_HANDLE, tls_io);
 MOCKABLE_FUNCTION(, int, tlsio_wolfssl_open, CONCRETE_IO_HANDLE, tls_io, ON_IO_OPEN_COMPLETE, on_io_open_complete, void*, on_io_open_complete_context, ON_BYTES_RECEIVED, on_bytes_received, void*, on_bytes_received_context, ON_IO_ERROR, on_io_error, void*, on_io_error_context);

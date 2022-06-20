@@ -208,7 +208,7 @@ int hmacFinalBits(HMACContext *ctx,
 *   sha Error Code.
 *
 */
-int hmacResult(HMACContext *ctx, uint8_t *digest)
+int hmacResult(HMACContext *ctx, uint8_t digest[USHAMaxHashSize])
 {
     if (!ctx) return shaNull;
 

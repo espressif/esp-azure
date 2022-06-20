@@ -96,6 +96,11 @@ static <#= type_name.ToUpper() #>_HANDLE <#= type_name #>_create_internal(void)
 <#                      string mandatory_arg_name = mandatory_args[i].Key.name.ToLower().Replace('-', '_').Replace(':', '_'); #>
             amqpvalue_destroy(<#= mandatory_arg_name #>_amqp_value);
 <#                  } #>
+            if (result != 0)
+            {
+                <#= type_name #>_destroy(<#= type_name #>_instance);
+                <#= type_name #>_instance = NULL;
+            }
         }
 <#              } #>
     }
@@ -284,6 +289,7 @@ int amqpvalue_get_<#= type_name #>(AMQP_VALUE value, <#= type_name.ToUpper() #>_
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
 <#                     } #>
 <#                  k++; #>
@@ -292,7 +298,7 @@ int amqpvalue_get_<#= type_name #>(AMQP_VALUE value, <#= type_name.ToUpper() #>_
                     <#= type_name.ToLower() #>_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }

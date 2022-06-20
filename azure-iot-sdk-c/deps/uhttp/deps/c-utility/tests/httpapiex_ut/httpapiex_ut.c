@@ -376,7 +376,7 @@ static void setupAllCallForHTTPsequence(const char* relativePath, HTTP_HEADERS_H
     /*this is getting the buffer content and buffer length to pass to httpapi_executerequest*/
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         relativePath,
         requestHttpHeaders,
         requestHttpBodyContent,
@@ -412,7 +412,7 @@ static void prepareHTTPAPIEX_ExecuteRequest(unsigned int *asGivenByHttpApi, HTTP
         .IgnoreArgument(1).SetReturn(TEST_BUFFER);
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -733,7 +733,7 @@ TEST_FUNCTION(HTTPAPIEX_Destroy_frees_resources_3) /*this is destroy after havin
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
     setupAllCallBeforeHTTPsequence();
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(HTTPAPI_CloseConnection(IGNORED_PTR_ARG)) /*closing the conenction*/
@@ -778,7 +778,7 @@ TEST_FUNCTION(HTTPAPIEX_Destroy_not_call_HTTPAPI_Deinit_after_HTTPAPIEX_Init_suc
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
     setupAllCallBeforeHTTPsequence();
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(HTTPAPI_CloseConnection(IGNORED_PTR_ARG)) /*closing the conenction*/
@@ -903,7 +903,28 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_fails_with_invalid_request_type)
     umock_c_reset_all_calls();
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, (HTTPAPI_REQUEST_TYPE)(MU_COUNT_ARG(HTTPAPI_REQUEST_TYPE_VALUES)), TEST_RELATIVE_PATH, TEST_REQUEST_HTTP_HEADERS, TEST_REQUEST_BODY, &httpStatusCode, TEST_RESPONSE_HTTP_HEADERS, TEST_RESPONSE_BODY);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, (HTTPAPI_REQUEST_TYPE)(MU_COUNT_ARG(HTTPAPI_REQUEST_TYPE_VALUES) + 1), TEST_RELATIVE_PATH, TEST_REQUEST_HTTP_HEADERS, TEST_REQUEST_BODY, &httpStatusCode, TEST_RESPONSE_HTTP_HEADERS, TEST_RESPONSE_BODY);
+
+    ///assert
+    ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_INVALID_ARG, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    ///destroy
+    HTTPAPIEX_Destroy(httpapiexhandle);
+}
+
+/*Tests_SRS_HTTPAPIEX_02_007: [If parameter requestType does not indicate a valid request, HTTPAPIEX_ExecuteRequest shall fail and return HTTPAPIEX_INVALID_ARG.] */
+TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_fails_with_invalid_request_type_2)
+{
+    /// arrange
+    unsigned int httpStatusCode;
+    HTTPAPIEX_RESULT result;
+
+    HTTPAPIEX_HANDLE httpapiexhandle = HTTPAPIEX_Create(TEST_HOSTNAME);
+    umock_c_reset_all_calls();
+
+    /// act
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_TYPE_INVALID, TEST_RELATIVE_PATH, TEST_REQUEST_HTTP_HEADERS, TEST_REQUEST_BODY, &httpStatusCode, TEST_RESPONSE_HTTP_HEADERS, TEST_RESPONSE_BODY);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_INVALID_ARG, result);
@@ -932,7 +953,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_happy_path_with_all_non_NULL_parameters)
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -962,7 +983,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_relativePath_uses_empty)
     setupAllCallForHTTPsequence("", requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, NULL, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, NULL, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1021,7 +1042,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_request_headers_and_NULL_reques
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         IGNORED_PTR_ARG,
         IGNORED_PTR_ARG,
@@ -1041,7 +1062,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_request_headers_and_NULL_reques
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1088,7 +1109,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_request_headers_and_NULL_reques
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1133,7 +1154,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_request_headers_and_NULL_reques
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1167,7 +1188,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_request_headers_and_NULL_reques
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1224,7 +1245,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_NULL_re
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1242,7 +1263,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_NULL_re
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1286,7 +1307,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_NULL_re
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1328,7 +1349,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_NULL_re
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1357,7 +1378,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_NULL_re
         .SetReturn(NULL); /*because it makes a fake buffer*/
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, NULL, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1410,7 +1431,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_non_NUL
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1426,7 +1447,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_non_NUL
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1479,7 +1500,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_not_call_HTTPAPI_Init_after_HTTPAPIEX_Ini
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1495,7 +1516,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_not_call_HTTPAPI_Init_after_HTTPAPIEX_Ini
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1522,7 +1543,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_not_call_HTTPAPI_Deinit_after_HTTPAPIEX_I
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -1552,7 +1573,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_not_call_HTTPAPI_Deinit_after_HTTPAPIEX_I
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -1570,7 +1591,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_not_call_HTTPAPI_Deinit_after_HTTPAPIEX_I
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1612,7 +1633,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_non_NUL
         .SetReturn(HTTP_HEADERS_ERROR);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1650,7 +1671,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_request_headers_and_non_NUL
         .SetReturn(HTTP_HEADERS_ERROR);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1702,7 +1723,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_statusCode_succeeds)
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1718,7 +1739,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_statusCode_succeeds)
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, NULL, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, NULL, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1772,7 +1793,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_statusCode_returns_that_cod
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1789,7 +1810,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_statusCode_returns_that_cod
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -1840,7 +1861,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_cleans_when_originalhttpbody_is_NULL_and_
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, NULL, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, NULL, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1893,7 +1914,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_cleans_when_responsehttpbody_is_NULL_and_
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, NULL, NULL);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, NULL, NULL, &httpStatusCode, NULL, NULL);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -1950,7 +1971,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_response_headers_suceeds)
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -1971,7 +1992,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_response_headers_suceeds)
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, NULL, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, NULL, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2015,7 +2036,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_response_headers_fails_when_HTT
         .SetReturn(NULL);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, NULL, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, NULL, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -2069,7 +2090,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_response_headers_suceeds)
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -2085,7 +2106,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_response_headers_suceeds)
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2141,7 +2162,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_response_body_suceeds)
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -2162,7 +2183,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_response_body_suceeds)
         .IgnoreArgument(1);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, NULL);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, NULL);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2204,7 +2225,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_NULL_fails_when_BUFFER_new_fails)
         .SetReturn(NULL); /*because it makes a fake response buffer*/
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, NULL);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, NULL);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_ERROR, result);
@@ -2258,7 +2279,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_response_body_suceeds)
 
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         IGNORED_PTR_ARG,
@@ -2275,7 +2296,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_with_non_NULL_response_body_suceeds)
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2306,13 +2327,13 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S1) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_OK);
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2337,7 +2358,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S2) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2361,7 +2382,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S2) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2378,7 +2399,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S2) /*refer to httpapiex_retry_m
             ;
     }
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2403,7 +2424,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S3) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2426,7 +2447,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S3) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2467,7 +2488,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S3) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2485,7 +2506,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S3) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2510,7 +2531,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S4) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2546,7 +2567,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S4) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2564,7 +2585,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_S4) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -2591,7 +2612,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F1) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2613,7 +2634,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F1) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -2638,7 +2659,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F2) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2672,7 +2693,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F2) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -2697,7 +2718,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F3) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2733,7 +2754,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F3) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2759,7 +2780,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F3) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -2784,7 +2805,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F4) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2808,7 +2829,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F4) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2836,7 +2857,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F4) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -2861,7 +2882,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F5) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2885,7 +2906,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F5) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -2922,7 +2943,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F5) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -2947,7 +2968,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F6) /*refer to httpapiex_retry_m
     HTTP_HEADERS_HANDLE responseHttpHeaders;
     BUFFER_HANDLE responseHttpBody = TEST_BUFFER_RESP_BODY;
     createHttpObjects(&requestHttpHeaders, &responseHttpHeaders);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     prepareHTTPAPIEX_ExecuteRequest(&asGivenByHttpApi, requestHttpHeaders, responseHttpHeaders, responseHttpBody, HTTPAPI_ERROR);
@@ -2971,7 +2992,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F6) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -3012,7 +3033,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F6) /*refer to httpapiex_retry_m
             .IgnoreArgument(1);
         STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
             IGNORED_PTR_ARG,
-            HTTPAPI_REQUEST_PATCH,
+            HTTPAPI_REQUEST_HEAD,
             TEST_RELATIVE_PATH,
             requestHttpHeaders,
             IGNORED_PTR_ARG,
@@ -3037,7 +3058,7 @@ TEST_FUNCTION(HTTPAPIEX_ExecuteRequest_TestCase_F6) /*refer to httpapiex_retry_m
     }
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_RECOVERYFAILED, result);
@@ -3230,7 +3251,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_httpapi_succeeds)
     /*this is getting the buffer content and buffer length to pass to httpapi_executerequest*/
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         requestHttpBodyContent,
@@ -3244,7 +3265,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_httpapi_succeeds)
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -3310,7 +3331,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_httpapi_ignores_errors
     /*this is getting the buffer content and buffer length to pass to httpapi_executerequest*/
     STRICT_EXPECTED_CALL(HTTPAPI_ExecuteRequest(
         IGNORED_PTR_ARG,
-        HTTPAPI_REQUEST_PATCH,
+        HTTPAPI_REQUEST_HEAD,
         TEST_RELATIVE_PATH,
         requestHttpHeaders,
         requestHttpBodyContent,
@@ -3324,7 +3345,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_httpapi_ignores_errors
         ;
 
     /// act
-    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    result = HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
 
     ///assert
     ASSERT_ARE_EQUAL(HTTPAPIEX_RESULT, HTTPAPIEX_OK, result);
@@ -3463,7 +3484,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_existing_httpapi_handl
 
     setupAllCallBeforeHTTPsequence();
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     EXPECTED_CALL(HTTPAPI_CloneOption("someOption", "3", IGNORED_PTR_ARG));  /*this asks lower HTTPAPI to create a clone of the option*/
@@ -3507,7 +3528,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_existing_httpapi_handl
 
     setupAllCallBeforeHTTPsequence();
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     EXPECTED_CALL(HTTPAPI_CloneOption("someOption", "3", IGNORED_PTR_ARG));  /*this asks lower HTTPAPI to create a clone of the option*/
@@ -3552,7 +3573,7 @@ TEST_FUNCTION(HTTPAPIEX_SetOption_passes_saved_options_to_existing_httpapi_handl
 
     setupAllCallBeforeHTTPsequence();
     setupAllCallForHTTPsequence(TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, responseHttpHeaders, responseHttpBody);
-    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_PATCH, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
+    (void)HTTPAPIEX_ExecuteRequest(httpapiexhandle, HTTPAPI_REQUEST_HEAD, TEST_RELATIVE_PATH, requestHttpHeaders, requestHttpBody, &httpStatusCode, responseHttpHeaders, responseHttpBody);
     umock_c_reset_all_calls();
 
     EXPECTED_CALL(HTTPAPI_CloneOption("someOption", "3", IGNORED_PTR_ARG));  /*this asks lower HTTPAPI to create a clone of the option*/

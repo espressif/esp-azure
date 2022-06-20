@@ -1,11 +1,17 @@
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+/** @file prov_device_ll_client.h
+*   @brief Low level provisioning client.
+*
+*/
+
 #ifndef PROV_DEVICE_LL_CLIENT_H
 #define PROV_DEVICE_LL_CLIENT_H
 
 #include "umock_c/umock_c_prod.h"
 #include "azure_macro_utils/macro_utils.h"
+#include "azure_c_shared_utility/const_defines.h"
 #include "azure_prov_client/prov_transport.h"
 
 #ifdef __cplusplus
@@ -42,9 +48,9 @@ MU_DEFINE_ENUM_WITHOUT_INVALID(PROV_DEVICE_RESULT, PROV_DEVICE_RESULT_VALUE);
 
 MU_DEFINE_ENUM_WITHOUT_INVALID(PROV_DEVICE_REG_STATUS, PROV_DEVICE_REG_STATUS_VALUES);
 
-static const char* const PROV_REGISTRATION_ID = "registration_id";
-static const char* const PROV_OPTION_LOG_TRACE = "logtrace";
-static const char* const PROV_OPTION_TIMEOUT = "provisioning_timeout";
+static STATIC_VAR_UNUSED const char* const PROV_REGISTRATION_ID = "registration_id";
+static STATIC_VAR_UNUSED const char* const PROV_OPTION_LOG_TRACE = "logtrace";
+static STATIC_VAR_UNUSED const char* const PROV_OPTION_TIMEOUT = "provisioning_timeout";
 
 typedef void(*PROV_DEVICE_CLIENT_REGISTER_DEVICE_CALLBACK)(PROV_DEVICE_RESULT register_result, const char* iothub_uri, const char* device_id, void* user_context);
 typedef void(*PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK)(PROV_DEVICE_REG_STATUS reg_status, void* user_context);

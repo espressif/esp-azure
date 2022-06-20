@@ -551,7 +551,7 @@ char* amqpvalue_to_string(AMQP_VALUE amqp_value)
                         else
                         {
                             char* value_string = amqpvalue_to_string(value);
-                            if (key_string == NULL)
+                            if (value_string == NULL)
                             {
                                 LogError("Failure getting stringified value for index %u", (unsigned int)i);
                                 free(key_string);

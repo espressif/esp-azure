@@ -5,6 +5,9 @@
 // Checking of return codes and error values shall be omitted for brevity.  Please practice sound engineering practices
 // when writing production code.
 
+// NOTE: There are limitations and alternatives in this SDK's implementation of multiplexing.  See
+// ../../../doc/multiplexing_limitations.md for additional details.
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -116,7 +119,7 @@ int main(void)
         }
         else
         {
-            // Set any option that are neccessary.
+            // Set any option that are necessary.
             // For available options please see the iothub_sdk_options.md documentation
             //bool traceOn = true;
             //IoTHubDeviceClient_SetOption(device_handle1, OPTION_LOG_TRACE, &traceOn);
@@ -131,15 +134,15 @@ int main(void)
             /* Here subscribe for C2D methods */
             if (IoTHubDeviceClient_SetDeviceMethodCallback(device_handle1, DeviceMethodCallback, (void*)deviceId1) != IOTHUB_CLIENT_OK)
             {
-                (void)printf("ERROR: IoTHubClient_SetDeviceMethodCallback for the first device..........FAILED!\r\n");
+                (void)printf("ERROR: IoTHubDeviceClient_SetDeviceMethodCallback for the first device..........FAILED!\r\n");
             }
             else if (IoTHubDeviceClient_SetDeviceMethodCallback(device_handle2, DeviceMethodCallback, (void*)deviceId2) != IOTHUB_CLIENT_OK)
             {
-                (void)printf("ERROR: IoTHubClient_SetDeviceMethodCallback for the second device..........FAILED!\r\n");
+                (void)printf("ERROR: IoTHubDeviceClient_SetDeviceMethodCallback for the second device..........FAILED!\r\n");
             }
             else
             {
-                (void)printf("IoTHubClient_SetMessageCallback...successful.\r\n");
+                (void)printf("IoTHubDeviceClient_SetMessageCallback...successful.\r\n");
                 (void)printf("Waiting for C2D methods ...\r\n");
 
                 (void)printf("Press enter to close application\r\n");

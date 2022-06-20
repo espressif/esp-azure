@@ -291,6 +291,21 @@ IOTHUB_CLIENT_RESULT IoTHubModuleClient_LL_SetInputMessageCallback(IOTHUB_MODULE
     return result;
 }
 
+IOTHUB_CLIENT_RESULT IoTHubModuleClient_LL_SendMessageDisposition(IOTHUB_MODULE_CLIENT_LL_HANDLE iotHubModuleClientHandle, IOTHUB_MESSAGE_HANDLE message, IOTHUBMESSAGE_DISPOSITION_RESULT disposition)
+{
+    IOTHUB_CLIENT_RESULT result;
+    if (iotHubModuleClientHandle != NULL)
+    {
+        result = IoTHubClientCore_LL_SendMessageDisposition(iotHubModuleClientHandle->coreHandle, message, disposition);
+    }
+    else
+    {
+        LogError("iotHubModuleClientHandle cannot be NULL");
+        result = IOTHUB_CLIENT_INVALID_ARG;
+    }
+    return result;
+}
+
 #ifdef USE_EDGE_MODULES
 
 IOTHUB_MODULE_CLIENT_LL_HANDLE IoTHubModuleClient_LL_CreateFromEnvironment(IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
@@ -313,7 +328,7 @@ IOTHUB_MODULE_CLIENT_LL_HANDLE IoTHubModuleClient_LL_CreateFromEnvironment(IOTHU
         }
         else if ((result->methodHandle = IoTHubClientCore_LL_GetEdgeHandle(result->coreHandle)) == NULL)
         {
-            LogError("Failed to set module method handle");
+            LogError("Failed to get module method handle");
             IoTHubModuleClient_LL_Destroy(result);
             result = NULL;
         }

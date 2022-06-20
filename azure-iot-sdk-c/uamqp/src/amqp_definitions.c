@@ -146,6 +146,12 @@ ERROR_HANDLE error_create(const char* condition_value)
             }
 
             amqpvalue_destroy(condition_amqp_value);
+
+            if (result != 0)
+            {
+                error_destroy(error_instance);
+                error_instance = NULL;
+            }
         }
     }
 
@@ -282,6 +288,7 @@ int amqpvalue_get_error(AMQP_VALUE value, ERROR_HANDLE* error_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* description */
                     if (list_item_count > 1)
@@ -345,7 +352,7 @@ int amqpvalue_get_error(AMQP_VALUE value, ERROR_HANDLE* error_handle)
                     error_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -672,6 +679,12 @@ OPEN_HANDLE open_create(const char* container_id_value)
             }
 
             amqpvalue_destroy(container_id_amqp_value);
+
+            if (result != 0)
+            {
+                open_destroy(open_instance);
+                open_instance = NULL;
+            }
         }
     }
 
@@ -808,6 +821,7 @@ int amqpvalue_get_open(AMQP_VALUE value, OPEN_HANDLE* open_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* hostname */
                     if (list_item_count > 1)
@@ -1082,7 +1096,7 @@ int amqpvalue_get_open(AMQP_VALUE value, OPEN_HANDLE* open_handle)
                     open_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -2252,6 +2266,12 @@ BEGIN_HANDLE begin_create(transfer_number next_outgoing_id_value, uint32_t incom
             amqpvalue_destroy(next_outgoing_id_amqp_value);
             amqpvalue_destroy(incoming_window_amqp_value);
             amqpvalue_destroy(outgoing_window_amqp_value);
+
+            if (result != 0)
+            {
+                begin_destroy(begin_instance);
+                begin_instance = NULL;
+            }
         }
     }
 
@@ -2417,6 +2437,7 @@ int amqpvalue_get_begin(AMQP_VALUE value, BEGIN_HANDLE* begin_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* incoming-window */
                     if (list_item_count > 2)
@@ -2457,6 +2478,7 @@ int amqpvalue_get_begin(AMQP_VALUE value, BEGIN_HANDLE* begin_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* outgoing-window */
                     if (list_item_count > 3)
@@ -2497,6 +2519,7 @@ int amqpvalue_get_begin(AMQP_VALUE value, BEGIN_HANDLE* begin_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* handle-max */
                     if (list_item_count > 4)
@@ -2622,7 +2645,7 @@ int amqpvalue_get_begin(AMQP_VALUE value, BEGIN_HANDLE* begin_handle)
                     begin_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -3488,6 +3511,12 @@ ATTACH_HANDLE attach_create(const char* name_value, handle handle_value, role ro
             amqpvalue_destroy(name_amqp_value);
             amqpvalue_destroy(handle_amqp_value);
             amqpvalue_destroy(role_amqp_value);
+
+            if (result != 0)
+            {
+                attach_destroy(attach_instance);
+                attach_instance = NULL;
+            }
         }
     }
 
@@ -3624,6 +3653,7 @@ int amqpvalue_get_attach(AMQP_VALUE value, ATTACH_HANDLE* attach_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* handle */
                     if (list_item_count > 1)
@@ -3664,6 +3694,7 @@ int amqpvalue_get_attach(AMQP_VALUE value, ATTACH_HANDLE* attach_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* role */
                     if (list_item_count > 2)
@@ -3704,6 +3735,7 @@ int amqpvalue_get_attach(AMQP_VALUE value, ATTACH_HANDLE* attach_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* snd-settle-mode */
                     if (list_item_count > 3)
@@ -4000,7 +4032,7 @@ int amqpvalue_get_attach(AMQP_VALUE value, ATTACH_HANDLE* attach_handle)
                     attach_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -5394,6 +5426,12 @@ FLOW_HANDLE flow_create(uint32_t incoming_window_value, transfer_number next_out
             amqpvalue_destroy(incoming_window_amqp_value);
             amqpvalue_destroy(next_outgoing_id_amqp_value);
             amqpvalue_destroy(outgoing_window_amqp_value);
+
+            if (result != 0)
+            {
+                flow_destroy(flow_instance);
+                flow_instance = NULL;
+            }
         }
     }
 
@@ -5559,6 +5597,7 @@ int amqpvalue_get_flow(AMQP_VALUE value, FLOW_HANDLE* flow_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* next-outgoing-id */
                     if (list_item_count > 2)
@@ -5599,6 +5638,7 @@ int amqpvalue_get_flow(AMQP_VALUE value, FLOW_HANDLE* flow_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* outgoing-window */
                     if (list_item_count > 3)
@@ -5639,6 +5679,7 @@ int amqpvalue_get_flow(AMQP_VALUE value, FLOW_HANDLE* flow_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* handle */
                     if (list_item_count > 4)
@@ -5847,7 +5888,7 @@ int amqpvalue_get_flow(AMQP_VALUE value, FLOW_HANDLE* flow_handle)
                     flow_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -6830,6 +6871,12 @@ TRANSFER_HANDLE transfer_create(handle handle_value)
             }
 
             amqpvalue_destroy(handle_amqp_value);
+
+            if (result != 0)
+            {
+                transfer_destroy(transfer_instance);
+                transfer_instance = NULL;
+            }
         }
     }
 
@@ -6966,6 +7013,7 @@ int amqpvalue_get_transfer(AMQP_VALUE value, TRANSFER_HANDLE* transfer_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* delivery-id */
                     if (list_item_count > 1)
@@ -7245,7 +7293,7 @@ int amqpvalue_get_transfer(AMQP_VALUE value, TRANSFER_HANDLE* transfer_handle)
                     transfer_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -8256,6 +8304,12 @@ DISPOSITION_HANDLE disposition_create(role role_value, delivery_number first_val
 
             amqpvalue_destroy(role_amqp_value);
             amqpvalue_destroy(first_amqp_value);
+
+            if (result != 0)
+            {
+                disposition_destroy(disposition_instance);
+                disposition_instance = NULL;
+            }
         }
     }
 
@@ -8392,6 +8446,7 @@ int amqpvalue_get_disposition(AMQP_VALUE value, DISPOSITION_HANDLE* disposition_
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* first */
                     if (list_item_count > 1)
@@ -8432,6 +8487,7 @@ int amqpvalue_get_disposition(AMQP_VALUE value, DISPOSITION_HANDLE* disposition_
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* last */
                     if (list_item_count > 2)
@@ -8537,7 +8593,7 @@ int amqpvalue_get_disposition(AMQP_VALUE value, DISPOSITION_HANDLE* disposition_
                     disposition_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -9106,6 +9162,12 @@ DETACH_HANDLE detach_create(handle handle_value)
             }
 
             amqpvalue_destroy(handle_amqp_value);
+
+            if (result != 0)
+            {
+                detach_destroy(detach_instance);
+                detach_instance = NULL;
+            }
         }
     }
 
@@ -9242,6 +9304,7 @@ int amqpvalue_get_detach(AMQP_VALUE value, DETACH_HANDLE* detach_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* closed */
                     if (list_item_count > 1)
@@ -9309,7 +9372,7 @@ int amqpvalue_get_detach(AMQP_VALUE value, DETACH_HANDLE* detach_handle)
                     detach_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -9739,7 +9802,7 @@ int amqpvalue_get_end(AMQP_VALUE value, END_HANDLE* end_handle)
                     end_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -9993,7 +10056,7 @@ int amqpvalue_get_close(AMQP_VALUE value, CLOSE_HANDLE* close_handle)
                     close_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -10133,6 +10196,12 @@ SASL_MECHANISMS_HANDLE sasl_mechanisms_create(AMQP_VALUE sasl_server_mechanisms_
             }
 
             amqpvalue_destroy(sasl_server_mechanisms_amqp_value);
+
+            if (result != 0)
+            {
+                sasl_mechanisms_destroy(sasl_mechanisms_instance); 
+                sasl_mechanisms_instance = NULL;
+            }
         }
     }
 
@@ -10271,12 +10340,13 @@ int amqpvalue_get_sasl_mechanisms(AMQP_VALUE value, SASL_MECHANISMS_HANDLE* sasl
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
 
                     sasl_mechanisms_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -10473,6 +10543,12 @@ SASL_INIT_HANDLE sasl_init_create(const char* mechanism_value)
             }
 
             amqpvalue_destroy(mechanism_amqp_value);
+
+            if (result != 0)
+            {
+                sasl_init_destroy(sasl_init_instance);
+                sasl_init_instance = NULL;
+            }
         }
     }
 
@@ -10609,6 +10685,7 @@ int amqpvalue_get_sasl_init(AMQP_VALUE value, SASL_INIT_HANDLE* sasl_init_handle
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* initial-response */
                     if (list_item_count > 1)
@@ -10672,7 +10749,7 @@ int amqpvalue_get_sasl_init(AMQP_VALUE value, SASL_INIT_HANDLE* sasl_init_handle
                     sasl_init_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -10971,6 +11048,12 @@ SASL_CHALLENGE_HANDLE sasl_challenge_create(amqp_binary challenge_value)
             }
 
             amqpvalue_destroy(challenge_amqp_value);
+
+            if (result != 0)
+            {
+                sasl_challenge_destroy(sasl_challenge_instance);
+                sasl_challenge_instance = NULL;
+            }
         }
     }
 
@@ -11107,12 +11190,13 @@ int amqpvalue_get_sasl_challenge(AMQP_VALUE value, SASL_CHALLENGE_HANDLE* sasl_c
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
 
                     sasl_challenge_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -11245,6 +11329,12 @@ SASL_RESPONSE_HANDLE sasl_response_create(amqp_binary response_value)
             }
 
             amqpvalue_destroy(response_amqp_value);
+
+            if (result != 0)
+            {
+                sasl_response_destroy(sasl_response_instance);
+                sasl_response_instance = NULL;
+            }
         }
     }
 
@@ -11381,12 +11471,13 @@ int amqpvalue_get_sasl_response(AMQP_VALUE value, SASL_RESPONSE_HANDLE* sasl_res
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
 
                     sasl_response_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -11519,6 +11610,12 @@ SASL_OUTCOME_HANDLE sasl_outcome_create(sasl_code code_value)
             }
 
             amqpvalue_destroy(code_amqp_value);
+
+            if (result != 0)
+            {
+                sasl_outcome_destroy(sasl_outcome_instance);
+                sasl_outcome_instance = NULL;
+            }
         }
     }
 
@@ -11655,6 +11752,7 @@ int amqpvalue_get_sasl_outcome(AMQP_VALUE value, SASL_OUTCOME_HANDLE* sasl_outco
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* additional-data */
                     if (list_item_count > 1)
@@ -11689,7 +11787,7 @@ int amqpvalue_get_sasl_outcome(AMQP_VALUE value, SASL_OUTCOME_HANDLE* sasl_outco
                     sasl_outcome_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -12312,7 +12410,7 @@ int amqpvalue_get_source(AMQP_VALUE value, SOURCE_HANDLE* source_handle)
                     source_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -13722,7 +13820,7 @@ int amqpvalue_get_target(AMQP_VALUE value, TARGET_HANDLE* target_handle)
                     target_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -14733,7 +14831,7 @@ int amqpvalue_get_header(AMQP_VALUE value, HEADER_HANDLE* header_handle)
                     header_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -15975,7 +16073,7 @@ int amqpvalue_get_properties(AMQP_VALUE value, PROPERTIES_HANDLE* properties_han
                     properties_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -17115,6 +17213,12 @@ RECEIVED_HANDLE received_create(uint32_t section_number_value, uint64_t section_
 
             amqpvalue_destroy(section_number_amqp_value);
             amqpvalue_destroy(section_offset_amqp_value);
+
+            if (result != 0)
+            {
+                received_destroy(received_instance);
+                received_instance = NULL;
+            }
         }
     }
 
@@ -17251,6 +17355,7 @@ int amqpvalue_get_received(AMQP_VALUE value, RECEIVED_HANDLE* received_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
                     /* section-offset */
                     if (list_item_count > 1)
@@ -17291,12 +17396,13 @@ int amqpvalue_get_received(AMQP_VALUE value, RECEIVED_HANDLE* received_handle)
                     else
                     {
                         result = MU_FAILURE;
+                        break;
                     }
 
                     received_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -17599,7 +17705,7 @@ int amqpvalue_get_accepted(AMQP_VALUE value, ACCEPTED_HANDLE* accepted_handle)
                     accepted_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -17770,7 +17876,7 @@ int amqpvalue_get_rejected(AMQP_VALUE value, REJECTED_HANDLE* rejected_handle)
                     rejected_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -17990,7 +18096,7 @@ int amqpvalue_get_released(AMQP_VALUE value, RELEASED_HANDLE* released_handle)
                     released_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }
@@ -18215,7 +18321,7 @@ int amqpvalue_get_modified(AMQP_VALUE value, MODIFIED_HANDLE* modified_handle)
                     modified_instance->composite_value = amqpvalue_clone(value);
 
                     result = 0;
-                } while((void)0,0);
+                } while(0);
             }
         }
     }

@@ -218,7 +218,7 @@ static void* xio_CloneOption(const char* name, const void* value)
     {
         if (strcmp(name, CONCRETE_OPTIONS) == 0)
         {
-            result = (void*)value;
+            result = (void*)OptionHandler_Clone((OPTIONHANDLER_HANDLE)value);
         }
         else
         {
@@ -285,7 +285,6 @@ OPTIONHANDLER_HANDLE xio_retrieveoptions(XIO_HANDLE xio)
                 if (OptionHandler_AddOption(result, CONCRETE_OPTIONS, concreteOptions) != OPTIONHANDLER_OK)
                 {
                     LogError("unable to OptionHandler_AddOption");
-                    OptionHandler_Destroy(concreteOptions);
                     OptionHandler_Destroy(result);
                     result = NULL;
                 }
@@ -293,6 +292,9 @@ OPTIONHANDLER_HANDLE xio_retrieveoptions(XIO_HANDLE xio)
                 {
                     /*all is fine*/
                 }
+                
+                // Must destroy since OptionHandler_AddOption creates a copy of it.
+                OptionHandler_Destroy(concreteOptions);
             }
         }
     }

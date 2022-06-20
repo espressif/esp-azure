@@ -167,7 +167,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
 
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
@@ -263,7 +263,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
 
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
@@ -407,7 +407,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
 
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
@@ -774,7 +774,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
             int nResult;
 
             umock_c_negative_tests_reset();
@@ -1005,7 +1005,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         for (index = 0; index < count; index++)
         {
             STRING_HANDLE str_result;
-            char tmp_msg[64];
+            char tmp_msg[128];
 
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
@@ -1114,7 +1114,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         for (index = 0; index < count; index++)
         {
             STRING_HANDLE result;
-            char tmp_msg[64];
+            char tmp_msg[128];
 
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
@@ -1314,7 +1314,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
             STRING_HANDLE result;
 
             umock_c_negative_tests_reset();
@@ -1552,7 +1552,7 @@ BEGIN_TEST_SUITE(strings_unittests)
         count = umock_c_negative_tests_call_count();
         for (index = 0; index < count; index++)
         {
-            char tmp_msg[64];
+            char tmp_msg[128];
             int str_result;
 
             umock_c_negative_tests_reset();

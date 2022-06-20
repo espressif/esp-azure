@@ -2,7 +2,7 @@
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #This is the CMakeLists.txt for testing
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 compileAsC99()
 
@@ -27,5 +27,9 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/adapters)
 
 add_executable(symm_key_provision ${symm_key_provision_c_files} ${symm_key_provision_h_files})
 
-linkSharedUtil(symm_key_provision)
-link_security_client(symm_key_provision)
+target_link_libraries(symm_key_provision
+    PUBLIC
+        prov_auth_client
+        hsm_security_client
+        aziotsharedutil
+)

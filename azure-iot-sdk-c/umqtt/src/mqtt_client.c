@@ -32,7 +32,7 @@
 static const char* const TRUE_CONST = "true";
 static const char* const FALSE_CONST = "false";
 
-MU_DEFINE_ENUM_STRINGS(QOS_VALUE, QOS_VALUE_VALUES);
+MU_DEFINE_ENUM_STRINGS_2(QOS_VALUE, QOS_VALUE_VALUES);
 
 #define MQTT_STATUS_INITIAL_STATUS      0x0000
 #define MQTT_STATUS_CLIENT_CONNECTED    0x0001
@@ -380,28 +380,26 @@ static void logIncomingRawTrace(MQTT_CLIENT* mqtt_client, CONTROL_PACKET_TYPE pa
 
 static int sendPacketItem(MQTT_CLIENT* mqtt_client, const unsigned char* data, size_t length)
 {
-    int result;
+    int result = xio_send(mqtt_client->xioHandle, (const void*)data, length, sendComplete, mqtt_client);
 
-    if (tickcounter_get_current_ms(mqtt_client->packetTickCntr, &mqtt_client->packetSendTimeMs) != 0)
+    if (result != 0)
     {
-        LogError("Failure getting current ms tickcounter");
+        LogError("Failure sending control packet data");
         result = MU_FAILURE;
     }
     else
     {
-        result = xio_send(mqtt_client->xioHandle, (const void*)data, length, sendComplete, mqtt_client);
-        if (result != 0)
+#ifdef ENABLE_RAW_TRACE
+        logOutgoingRawTrace(mqtt_client, (const uint8_t*)data, length);
+#endif
+
+        if (tickcounter_get_current_ms(mqtt_client->packetTickCntr, &mqtt_client->packetSendTimeMs) != 0)
         {
-            LogError("Failure sending control packet data");
+            LogError("Failure getting current ms tickcounter");
             result = MU_FAILURE;
         }
-        else
-        {
-#ifdef ENABLE_RAW_TRACE
-            logOutgoingRawTrace(mqtt_client, (const uint8_t*)data, length);
-#endif
-        }
     }
+
     return result;
 }
 
@@ -633,6 +631,56 @@ static int cloneMqttOptions(MQTT_CLIENT* mqtt_client, const MQTT_CLIENT_OPTIONS*
     return result;
 }
 
+static void SendMessageAck(MQTT_CLIENT* mqtt_client, uint16_t packetId, QOS_VALUE qosValue)
+{
+    CONTROL_PACKET_TYPE response_packet_type = UNKNOWN_TYPE;
+    BUFFER_HANDLE pubRel = NULL;
+    if (qosValue == DELIVER_EXACTLY_ONCE)
+    {
+        pubRel = mqtt_codec_publishReceived(packetId);
+        if (pubRel == NULL)
+        {
+            LogError("Failed to allocate publish receive message.");
+            set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+        }
+
+        response_packet_type = PUBREC_TYPE;
+    }
+    else if (qosValue == DELIVER_AT_LEAST_ONCE)
+    {
+        pubRel = mqtt_codec_publishAck(packetId);
+        if (pubRel == NULL)
+        {
+            LogError("Failed to allocate publish ack message.");
+            set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
+        }
+
+        response_packet_type = PUBACK_TYPE;
+    }
+
+    if (pubRel != NULL)
+    {
+        size_t size = BUFFER_length(pubRel);
+        if (sendPacketItem(mqtt_client, BUFFER_u_char(pubRel), size) != 0)
+        {
+            LogError("Failed sending publish reply.");
+            set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+        }
+#ifndef NO_LOGGING
+        else if (is_trace_enabled(mqtt_client))
+        {
+            STRING_HANDLE ack_trace_log = STRING_construct_sprintf("%s | PACKET_ID: %"PRIu16, 
+                response_packet_type == PUBACK_TYPE ? "PUBACK" : ((response_packet_type == PUBREC_TYPE) ? "PUBREC" : "UNDEFINED"),
+                packetId);
+
+            log_outgoing_trace(mqtt_client, ack_trace_log);
+            STRING_delete(ack_trace_log);
+        }
+#endif
+        BUFFER_delete(pubRel);
+    }
+}
+
 static void ProcessPublishMessage(MQTT_CLIENT* mqtt_client, uint8_t* initialPos, size_t packetLength, int flags)
 {
     bool isDuplicateMsg = (flags & DUPLICATE_FLAG_MASK) ? true : false;
@@ -656,7 +704,7 @@ static void ProcessPublishMessage(MQTT_CLIENT* mqtt_client, uint8_t* initialPos,
         if (is_trace_enabled(mqtt_client))
         {
             trace_log = STRING_construct_sprintf("PUBLISH | IS_DUP: %s | RETAIN: %d | QOS: %s | TOPIC_NAME: %s", isDuplicateMsg ? TRUE_CONST : FALSE_CONST,
-                isRetainMsg ? 1 : 0, MU_ENUM_TO_STRING(QOS_VALUE, qosValue), topicName);
+                isRetainMsg ? 1 : 0, MU_ENUM_TO_STRING_2(QOS_VALUE, qosValue), topicName);
         }
 #endif
         uint16_t packetId = 0;
@@ -701,36 +749,11 @@ static void ProcessPublishMessage(MQTT_CLIENT* mqtt_client, uint8_t* initialPos,
                     log_incoming_trace(mqtt_client, trace_log);
                 }
 #endif
-                mqtt_client->fnMessageRecv(msgHandle, mqtt_client->ctx);
+                MQTT_CLIENT_ACK_OPTION ack_option = mqtt_client->fnMessageRecv(msgHandle, mqtt_client->ctx);
 
-                BUFFER_HANDLE pubRel = NULL;
-                if (qosValue == DELIVER_EXACTLY_ONCE)
+                if (ack_option == MQTT_CLIENT_ACK_SYNC)
                 {
-                    pubRel = mqtt_codec_publishReceived(packetId);
-                    if (pubRel == NULL)
-                    {
-                        LogError("Failed to allocate publish receive message.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
-                    }
-                }
-                else if (qosValue == DELIVER_AT_LEAST_ONCE)
-                {
-                    pubRel = mqtt_codec_publishAck(packetId);
-                    if (pubRel == NULL)
-                    {
-                        LogError("Failed to allocate publish ack message.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_MEMORY_ERROR);
-                    }
-                }
-                if (pubRel != NULL)
-                {
-                    size_t size = BUFFER_length(pubRel);
-                    if (sendPacketItem(mqtt_client, BUFFER_u_char(pubRel), size) != 0)
-                    {
-                        LogError("Failed sending publish reply.");
-                        set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
-                    }
-                    BUFFER_delete(pubRel);
+                    SendMessageAck(mqtt_client, packetId, qosValue);
                 }
             }
             mqttmessage_destroy(msgHandle);
@@ -769,7 +792,22 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                 {
                     /*Codes_SRS_MQTT_CLIENT_07_028: [If the actionResult parameter is of type CONNECT_ACK then the msgInfo value shall be a CONNECT_ACK structure.]*/
                     CONNECT_ACK connack = { 0 };
-                    connack.isSessionPresent = (byteutil_readByte(&iterator) == 0x1) ? true : false;
+                    if (packetLength != 2) // CONNACK payload must be only 2 bytes
+                    {
+                        LogError("Invalid CONNACK packet.");
+                        set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+                        break;
+                    }
+
+                    uint8_t connect_acknowledge_flags = byteutil_readByte(&iterator);
+                    if (connect_acknowledge_flags & 0xFE) // bits 7-1 must be zero
+                    {
+                        LogError("Invalid CONNACK packet.");
+                        set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+                        break;
+                    }
+
+                    connack.isSessionPresent = (connect_acknowledge_flags == 0x1) ? true : false;
                     uint8_t rc = byteutil_readByte(&iterator);
                     connack.returnCode =
                         (rc < ((uint8_t)CONN_REFUSED_UNKNOWN)) ?
@@ -801,6 +839,13 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                 case PUBREL_TYPE:
                 case PUBCOMP_TYPE:
                 {
+                    if (packetLength != 2) // PUBXXX payload must be only 2 bytes
+                    {
+                        LogError("Invalid packet length.");
+                        set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+                        break;
+                    }
+
                     /*Codes_SRS_MQTT_CLIENT_07_029: [If the actionResult parameter are of types PUBACK_TYPE, PUBREC_TYPE, PUBREL_TYPE or PUBCOMP_TYPE then the msgInfo value shall be a PUBLISH_ACK structure.]*/
                     MQTT_CLIENT_EVENT_RESULT action = (packet == PUBACK_TYPE) ? MQTT_CLIENT_ON_PUBLISH_ACK :
                         (packet == PUBREC_TYPE) ? MQTT_CLIENT_ON_PUBLISH_RECV :
@@ -875,6 +920,12 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                         while (remainLen > 0)
                         {
                             uint8_t qosRet = byteutil_readByte(&iterator);
+                            if (qosRet & 0x7C) // SUBACK QOS bits 6-2 must be zero
+                            {
+                                LogError("Invalid SUBACK_TYPE packet.");
+                                set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+                                break;
+                            }
                             suback.qosReturn[suback.qosCount++] =
                                 (qosRet <= ((uint8_t)DELIVER_EXACTLY_ONCE)) ?
                                 (QOS_VALUE)qosRet :  DELIVER_FAILURE;
@@ -908,6 +959,13 @@ static void recvCompleteCallback(void* context, CONTROL_PACKET_TYPE packet, int 
                 {
                     /*Codes_SRS_MQTT_CLIENT_07_031: [If the actionResult parameter is of type UNSUBACK_TYPE then the msgInfo value shall be a UNSUBSCRIBE_ACK structure.]*/
                     UNSUBSCRIBE_ACK unsuback = { 0 };
+                    if (packetLength != 2) // UNSUBACK_TYPE payload must be only 2 bytes
+                    {
+                        LogError("Invalid UNSUBACK packet length.");
+                        set_error_callback(mqtt_client, MQTT_CLIENT_COMMUNICATION_ERROR);
+                        break;
+                    }
+
                     unsuback.packetId = byteutil_read_uint16(&iterator, packetLength);
 
 #ifndef NO_LOGGING
@@ -1226,6 +1284,25 @@ int mqtt_client_unsubscribe(MQTT_CLIENT_HANDLE handle, uint16_t packetId, const 
             STRING_delete(trace_log);
         }
     }
+    return result;
+}
+
+int mqtt_client_send_message_response(MQTT_CLIENT_HANDLE handle, uint16_t packetId, QOS_VALUE qosValue)
+{
+    int result;
+
+    if (handle == NULL || packetId == 0)
+    {
+        LogError("Invalid parameter specified mqtt_client: %p, packetId: %d", handle, packetId);
+        result = MU_FAILURE;
+    }
+    else
+    {
+        MQTT_CLIENT* mqtt_client = (MQTT_CLIENT*)handle;
+        SendMessageAck(mqtt_client, packetId, qosValue);
+        result = 0;
+    }
+
     return result;
 }
 

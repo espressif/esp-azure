@@ -5,11 +5,13 @@
 #define CRT_ABSTRACTIONS_H
 
 #ifdef __cplusplus
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <cerrno>
 #include <cmath>
 #else // __cplusplus
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -95,6 +97,7 @@ long double strtold_s(const char* nptr, char** endPtr);
 MOCKABLE_FUNCTION(, int, mallocAndStrcpy_s, char**, destination, const char*, source);
 MOCKABLE_FUNCTION(, int, unsignedIntToString, char*, destination, size_t, destinationSize, unsigned int, value);
 MOCKABLE_FUNCTION(, int, size_tToString, char*, destination, size_t, destinationSize, size_t, value);
+MOCKABLE_FUNCTION(, int, uint64_tToString, char*, destination, size_t, destinationSize, uint64_t, value);
 
 /*following logic shall define the TOUPPER and ISDIGIT, we do that because the SDK is not happy with some Arduino implementation of it.*/
 #define TOUPPER(c)      ((((c)>='a') && ((c)<='z'))?(c)-'a'+'A':c)

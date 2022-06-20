@@ -97,6 +97,8 @@ static AMQP_VALUE test_delivery_accepted = (AMQP_VALUE)0x4500;
 static AMQP_VALUE test_delivery_rejected = (AMQP_VALUE)0x4501;
 static AMQP_VALUE test_delivery_released = (AMQP_VALUE)0x4502;
 
+#define SIZE_OF_OPERATION_MESSAGE_INSTANCE_STRUCT 64
+
 MOCK_FUNCTION_WITH_CODE(, void, test_amqp_management_open_complete, void*, context, AMQP_MANAGEMENT_OPEN_RESULT, open_result)
 MOCK_FUNCTION_END()
 
@@ -210,6 +212,22 @@ static LIST_ITEM_HANDLE my_singlylinkedlist_get_next_item(LIST_ITEM_HANDLE list_
     return result;
 }
 
+static int my_singlylinkedlist_remove_if(SINGLYLINKEDLIST_HANDLE list, LIST_CONDITION_FUNCTION condition_function, const void* match_context)
+{
+    bool continue_processing = true;
+
+    for (size_t index = 0; continue_processing && index < list_item_count; index++)
+    {
+        if (condition_function(list_items[index], match_context, &continue_processing))
+        {
+            (void)mock_hook_singlylinkedlist_remove(list, (LIST_ITEM_HANDLE)(index + 1)); // See my_singlylinkedlist_remove to see why.
+        }
+    }
+
+    return 0;
+}
+
+
 static ON_MESSAGE_SENDER_STATE_CHANGED saved_on_message_sender_state_changed;
 static void* saved_on_message_sender_state_changed_context;
 static ON_MESSAGE_RECEIVER_STATE_CHANGED saved_on_message_receiver_state_changed;
@@ -270,6 +288,38 @@ static ASYNC_OPERATION_HANDLE my_messagesender_send_async(MESSAGE_SENDER_HANDLE 
     return test_send_operation;
 }
 
+static void ASYNC_OPERATION_HANDLE_ToString(char* string, size_t bufferSize, ASYNC_OPERATION_HANDLE val)
+{
+    (void)bufferSize;
+    (void)sprintf(string, "%p", val);
+}
+
+static int ASYNC_OPERATION_HANDLE_Compare(ASYNC_OPERATION_HANDLE left, ASYNC_OPERATION_HANDLE right)
+{
+    return left != right;
+}
+
+typedef struct ASYNC_OPERATION_CONTEXT_STRUCT_TEST_TAG
+{
+    ASYNC_OPERATION_CANCEL_HANDLER_FUNC async_operation_cancel_handler;
+    unsigned char context[SIZE_OF_OPERATION_MESSAGE_INSTANCE_STRUCT]; // This block of memory will be used in amqp_management.c for the OPERATION_MESSAGE_INSTANCE instance.
+} ASYNC_OPERATION_CONTEXT_STRUCT_TEST;
+
+static ASYNC_OPERATION_HANDLE my_async_operation_create(ASYNC_OPERATION_CANCEL_HANDLER_FUNC async_operation_cancel_handler, size_t context_size)
+{
+    (void)context_size;
+    ASYNC_OPERATION_CONTEXT_STRUCT_TEST* result = my_gballoc_malloc(sizeof(ASYNC_OPERATION_CONTEXT_STRUCT_TEST));
+    memset(result, 0, sizeof(ASYNC_OPERATION_CONTEXT_STRUCT_TEST));
+    result->async_operation_cancel_handler = async_operation_cancel_handler;
+
+    return (ASYNC_OPERATION_HANDLE)result;
+}
+
+static void my_async_operation_destroy(ASYNC_OPERATION_HANDLE async_operation)
+{
+    my_gballoc_free(async_operation);
+}
+
 static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
 {
     ASSERT_FAIL("umock_c reported error :%" PRI_MU_ENUM "", MU_ENUM_VALUE(UMOCK_C_ERROR_CODE, error_code));
@@ -309,6 +359,7 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_HOOK(singlylinkedlist_item_get_value, my_singlylinkedlist_item_get_value);
     REGISTER_GLOBAL_MOCK_HOOK(singlylinkedlist_find, my_singlylinkedlist_find);
     REGISTER_GLOBAL_MOCK_HOOK(singlylinkedlist_get_next_item, my_singlylinkedlist_get_next_item);
+    REGISTER_GLOBAL_MOCK_HOOK(singlylinkedlist_remove_if, my_singlylinkedlist_remove_if);
     REGISTER_GLOBAL_MOCK_RETURN(messaging_create_source, test_source_amqp_value);
     REGISTER_GLOBAL_MOCK_RETURN(messaging_create_target, test_target_amqp_value);
     REGISTER_GLOBAL_MOCK_HOOK(messagesender_create, my_messagesender_create);
@@ -334,6 +385,8 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_RETURN(messaging_delivery_rejected, test_delivery_rejected);
     REGISTER_GLOBAL_MOCK_RETURN(messaging_delivery_released, test_delivery_released);
     REGISTER_GLOBAL_MOCK_HOOK(mallocAndStrcpy_s, my_mallocAndStrcpy_s);
+    REGISTER_GLOBAL_MOCK_HOOK(async_operation_create, my_async_operation_create);
+    REGISTER_GLOBAL_MOCK_HOOK(async_operation_destroy, my_async_operation_destroy);
 
     REGISTER_UMOCK_ALIAS_TYPE(AMQP_MANAGEMENT_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(SINGLYLINKEDLIST_HANDLE, void*);
@@ -348,9 +401,11 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_UMOCK_ALIAS_TYPE(MESSAGE_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(PROPERTIES_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(LIST_ITEM_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(LIST_CONDITION_FUNCTION, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_MESSAGE_SEND_COMPLETE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(message_id_ulong, uint64_t);
     REGISTER_UMOCK_ALIAS_TYPE(ASYNC_OPERATION_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(ASYNC_OPERATION_CANCEL_HANDLER_FUNC, void*);
 
     /* boo, we need uint_fast32_t in umock */
     REGISTER_UMOCK_ALIAS_TYPE(tickcounter_ms_t, unsigned long long);
@@ -984,14 +1039,14 @@ TEST_FUNCTION(amqp_management_close_indicates_pending_operations_as_error_due_to
     STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_INSTANCE_CLOSED, 0, NULL, NULL));
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
 
     // second pending operation
     STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4245, AMQP_MANAGEMENT_EXECUTE_OPERATION_INSTANCE_CLOSED, 0, NULL, NULL));
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
 
@@ -1031,7 +1086,7 @@ TEST_FUNCTION(when_removing_the_pending_operation_fails_the_instance_is_still_cl
     STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_INSTANCE_CLOSED, 0, NULL, NULL));
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
 
@@ -1076,7 +1131,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_starts_the_operation)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1115,7 +1170,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_starts_the_operation)
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1125,7 +1180,73 @@ TEST_FUNCTION(amqp_management_execute_operation_async_starts_the_operation)
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    amqp_management_destroy(amqp_management);
+}
+
+/* Tests_SRS_AMQP_MANAGEMENT_09_004: [ The `ASYNC_OPERATION_HANDLE` cancel function shall cancel the underlying send async operation, remove this operation from the pending list, destroy this async operation. ] */
+TEST_FUNCTION(when_amqp_management_execute_operation_async_is_cancelled_success)
+{
+    // arrange
+    AMQP_MANAGEMENT_HANDLE amqp_management;
+    ASYNC_OPERATION_HANDLE execute_result;
+    amqp_management = amqp_management_create(test_session_handle, "test_node");
+    (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
+    saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
+    saved_on_message_receiver_state_changed(saved_on_message_receiver_state_changed_context, MESSAGE_RECEIVER_STATE_OPEN, MESSAGE_RECEIVER_STATE_OPENING);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(message_clone(test_message));
+    STRICT_EXPECTED_CALL(message_get_application_properties(test_cloned_message, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_application_properties(&test_application_properties, sizeof(test_application_properties));
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("operation"))
+        .SetReturn(test_operation_key);
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("some_operation"))
+        .SetReturn(test_operation_value);
+    STRICT_EXPECTED_CALL(amqpvalue_set_map_value(test_application_properties, test_operation_key, test_operation_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_operation_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_operation_key));
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("type"))
+        .SetReturn(test_type_key);
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("some_type"))
+        .SetReturn(test_type_value);
+    STRICT_EXPECTED_CALL(amqpvalue_set_map_value(test_application_properties, test_type_key, test_type_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_type_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_type_key));
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("locales"))
+        .SetReturn(test_locales_key);
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("en-US"))
+        .SetReturn(test_locales_value);
+    STRICT_EXPECTED_CALL(amqpvalue_set_map_value(test_application_properties, test_locales_key, test_locales_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_locales_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_locales_key));
+    STRICT_EXPECTED_CALL(message_set_application_properties(test_cloned_message, test_application_properties));
+    STRICT_EXPECTED_CALL(message_get_properties(test_cloned_message, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_properties(&test_properties, sizeof(test_properties));
+    STRICT_EXPECTED_CALL(amqpvalue_create_message_id_ulong(0));
+    STRICT_EXPECTED_CALL(properties_set_message_id(test_properties, test_message_id_value));
+    STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
+    STRICT_EXPECTED_CALL(properties_destroy(test_properties));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
+    STRICT_EXPECTED_CALL(message_destroy(test_cloned_message));
+    execute_result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+
+    umock_c_reset_all_calls();
+    STRICT_EXPECTED_CALL(async_operation_cancel(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(singlylinkedlist_remove_if(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(execute_result));
+
+    // act
+    ((ASYNC_OPERATION_CONTEXT_STRUCT_TEST*)execute_result)->async_operation_cancel_handler(execute_result);
+    
+    // assert
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1137,7 +1258,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_context_starts_t
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1176,7 +1297,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_context_starts_t
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1186,7 +1307,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_context_starts_t
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1197,13 +1318,13 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_context_starts_t
 TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_amqp_management_handle_fails)
 {
     // arrange
-    int result;
+    ASYNC_OPERATION_HANDLE result;
 
     // act
     result = amqp_management_execute_operation_async(NULL, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 }
 
@@ -1212,7 +1333,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_operation_fails)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1223,7 +1344,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_operation_fails)
     result = amqp_management_execute_operation_async(amqp_management, NULL, "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1235,7 +1356,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_type_fails)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1246,7 +1367,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_type_fails)
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", NULL, "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1258,7 +1379,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_on_execute_opera
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1269,7 +1390,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_on_execute_opera
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, NULL, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1281,7 +1402,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_message_creates_
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1320,7 +1441,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_message_creates_
     STRICT_EXPECTED_CALL(message_set_properties(test_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1330,7 +1451,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_message_creates_
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", NULL, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1342,7 +1463,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_when_not_open_fails)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     umock_c_reset_all_calls();
 
@@ -1350,7 +1471,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_when_not_open_fails)
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1362,7 +1483,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_after_close_fails)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1374,7 +1495,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_after_close_fails)
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1386,7 +1507,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_when_in_error_fails)
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1398,7 +1519,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_when_in_error_fails)
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1411,7 +1532,7 @@ TEST_FUNCTION(when_no_application_properties_were_set_on_the_message_a_new_map_i
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
     AMQP_VALUE NULL_test_application_properties = NULL;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1452,7 +1573,7 @@ TEST_FUNCTION(when_no_application_properties_were_set_on_the_message_a_new_map_i
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1462,7 +1583,7 @@ TEST_FUNCTION(when_no_application_properties_were_set_on_the_message_a_new_map_i
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1474,7 +1595,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_locales_does_not
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1506,7 +1627,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_locales_does_not
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1516,7 +1637,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_with_NULL_locales_does_not
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", NULL, test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1529,7 +1650,7 @@ TEST_FUNCTION(when_no_properties_were_set_on_the_message_a_new_properties_instan
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
     PROPERTIES_HANDLE NULL_test_properties = NULL;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1569,7 +1690,7 @@ TEST_FUNCTION(when_no_properties_were_set_on_the_message_a_new_properties_instan
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1579,7 +1700,7 @@ TEST_FUNCTION(when_no_properties_were_set_on_the_message_a_new_properties_instan
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1647,7 +1768,7 @@ TEST_FUNCTION(when_any_underlying_function_call_fails_amqp_management_execute_op
         .SetFailReturn(1);
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG))
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG))
         .SetFailReturn(NULL);
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG))
         .SetFailReturn(NULL);
@@ -1662,7 +1783,7 @@ TEST_FUNCTION(when_any_underlying_function_call_fails_amqp_management_execute_op
     for (index = 0; index < count - 2; index++)
     {
         char tmp_msg[128];
-        int result;
+        ASYNC_OPERATION_HANDLE result;
 
         if ((index == 5) ||
             (index == 6) ||
@@ -1685,7 +1806,7 @@ TEST_FUNCTION(when_any_underlying_function_call_fails_amqp_management_execute_op
         result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
         // assert
-        ASSERT_ARE_NOT_EQUAL(int, 0, result, tmp_msg);
+        ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result, tmp_msg);
     }
 
     // cleanup
@@ -1698,7 +1819,7 @@ TEST_FUNCTION(when_creating_the_application_properties_fails_amqp_management_exe
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     AMQP_VALUE NULL_test_application_properties = NULL;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
@@ -1717,7 +1838,7 @@ TEST_FUNCTION(when_creating_the_application_properties_fails_amqp_management_exe
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1730,7 +1851,7 @@ TEST_FUNCTION(when_creating_the_properties_fails_amqp_management_execute_operati
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
     PROPERTIES_HANDLE NULL_test_properties = NULL;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1773,7 +1894,7 @@ TEST_FUNCTION(when_creating_the_properties_fails_amqp_management_execute_operati
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1785,7 +1906,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_the_2nd_time_uses_the_next
 {
     // arrange
     AMQP_MANAGEMENT_HANDLE amqp_management;
-    int result;
+    ASYNC_OPERATION_HANDLE result;
     amqp_management = amqp_management_create(test_session_handle, "test_node");
     (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
     saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
@@ -1827,7 +1948,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_the_2nd_time_uses_the_next
     STRICT_EXPECTED_CALL(message_set_properties(test_cloned_message, test_properties));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_message_id_value));
     STRICT_EXPECTED_CALL(properties_destroy(test_properties));
-    STRICT_EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(async_operation_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_add(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messagesender_send_async(test_message_sender, test_cloned_message, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 0));
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
@@ -1837,7 +1958,7 @@ TEST_FUNCTION(amqp_management_execute_operation_async_the_2nd_time_uses_the_next
     result = amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_NOT_EQUAL(ASYNC_OPERATION_HANDLE, NULL, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
@@ -1892,7 +2013,7 @@ TEST_FUNCTION(when_on_message_send_complete_indicates_ERROR_the_pending_operatio
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_ERROR, 0, NULL, NULL));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
 
     // act
     saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_ERROR, NULL);
@@ -1924,9 +2045,6 @@ TEST_FUNCTION(when_on_message_send_complete_indicates_CANCELLED_the_pending_oper
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_ERROR, 0, NULL, NULL));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
 
     // act
     saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_CANCELLED, NULL);
@@ -1956,10 +2074,10 @@ TEST_FUNCTION(when_obtaining_the_list_item_payload_fails_an_error_is_indicated_t
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG))
         .SetReturn(1);
-    STRICT_EXPECTED_CALL(test_on_amqp_management_error((void*)0x4243));
+    STRICT_EXPECTED_CALL(test_on_amqp_management_error(IGNORED_PTR_ARG));
 
     // act
-    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_CANCELLED, NULL);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_ERROR, NULL);
 
     // assert
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
@@ -1982,6 +2100,7 @@ TEST_FUNCTION(when_on_send_message_complete_indicates_success_it_returns)
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
     umock_c_reset_all_calls();
+    STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
 
     // act
     saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
@@ -2060,6 +2179,7 @@ TEST_FUNCTION(on_message_received_with_a_valid_message_indicates_the_operation_c
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(message_get_application_properties(test_message, IGNORED_PTR_ARG))
@@ -2088,7 +2208,7 @@ TEST_FUNCTION(on_message_received_with_a_valid_message_indicates_the_operation_c
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_OK, 200, "my error ...", test_message));
 
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -2128,10 +2248,12 @@ TEST_FUNCTION(on_message_received_for_the_second_pending_operation_with_a_valid_
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
 
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(1);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4245);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(message_get_application_properties(test_message, IGNORED_PTR_ARG))
@@ -2162,7 +2284,7 @@ TEST_FUNCTION(on_message_received_for_the_second_pending_operation_with_a_valid_
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4245, AMQP_MANAGEMENT_EXECUTE_OPERATION_OK, 200, "my error ...", test_message));
 
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -3014,12 +3136,13 @@ TEST_FUNCTION(on_message_received_with_300_indicates_failure)
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     setup_calls_for_response_with_status_code_and_correlation_id(300, 0);
 
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_FAILED_BAD_STATUS, 300, "my error ...", test_message));
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -3055,12 +3178,13 @@ TEST_FUNCTION(on_message_received_with_199_indicates_failure)
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     setup_calls_for_response_with_status_code_and_correlation_id(199, 0);
 
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_FAILED_BAD_STATUS, 199, "my error ...", test_message));
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -3099,12 +3223,13 @@ TEST_FUNCTION(on_message_received_with_all_valid_codes_indicates_failure)
         umock_c_reset_all_calls();
         setup_calls_for_pending_operation_with_correlation_id(0);
         (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+        saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
         umock_c_reset_all_calls();
 
         setup_calls_for_response_with_status_code_and_correlation_id(i, i - 201);
 
         STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_OK, i, "my error ...", test_message));
-        STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+        STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
         STRICT_EXPECTED_CALL(messaging_delivery_accepted());
         STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -4204,6 +4329,7 @@ TEST_FUNCTION(when_amqp_management_set_override_status_code_key_name_is_called_t
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(message_get_application_properties(test_message, IGNORED_PTR_ARG))
@@ -4232,7 +4358,7 @@ TEST_FUNCTION(when_amqp_management_set_override_status_code_key_name_is_called_t
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_OK, 200, "my error ...", test_message));
 
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
@@ -4341,6 +4467,74 @@ TEST_FUNCTION(when_copying_the_string_fails_amqp_management_set_override_status_
     amqp_management_destroy(amqp_management);
 }
 
+TEST_FUNCTION(amqp_management_fails_if_response_to_operation_is_received_before_on_send_complete_is_called)
+{
+    // arrange
+    AMQP_MANAGEMENT_HANDLE amqp_management;
+    AMQP_VALUE result;
+    int32_t status_code = 200;
+    const char* test_status_description = "my error ...";
+    uint64_t correlation_id = 0;
+
+    amqp_management = amqp_management_create(test_session_handle, "test_node");
+    (void)amqp_management_set_override_status_description_key_name(amqp_management, "xxx");
+    (void)amqp_management_open_async(amqp_management, test_on_amqp_management_open_complete, (void*)0x4242, test_on_amqp_management_error, (void*)0x4243);
+    saved_on_message_sender_state_changed(saved_on_message_sender_state_changed_context, MESSAGE_SENDER_STATE_OPEN, MESSAGE_SENDER_STATE_OPENING);
+    saved_on_message_receiver_state_changed(saved_on_message_receiver_state_changed_context, MESSAGE_RECEIVER_STATE_OPEN, MESSAGE_RECEIVER_STATE_OPENING);
+    umock_c_reset_all_calls();
+    setup_calls_for_pending_operation_with_correlation_id(0);
+    (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    // Simulating no DISPOSITION received by not calling missing saved_on_message_send_complete(...)
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(message_get_application_properties(test_message, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_application_properties(&test_application_properties, sizeof(test_application_properties));
+    STRICT_EXPECTED_CALL(message_get_properties(test_message, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_properties(&test_properties, sizeof(test_properties));
+    STRICT_EXPECTED_CALL(properties_get_correlation_id(test_properties, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_correlation_id_value(&test_correlation_id_value, sizeof(test_correlation_id_value));
+    STRICT_EXPECTED_CALL(amqpvalue_get_ulong(test_correlation_id_value, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_ulong_value(&correlation_id, sizeof(correlation_id));
+    STRICT_EXPECTED_CALL(amqpvalue_get_inplace_described_value(test_application_properties))
+        .SetReturn(test_application_properties_map);
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("statusCode"))
+        .SetReturn(test_status_code_key);
+    STRICT_EXPECTED_CALL(amqpvalue_get_map_value(test_application_properties_map, test_status_code_key))
+        .SetReturn(test_status_code_value);
+    STRICT_EXPECTED_CALL(amqpvalue_get_int(test_status_code_value, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_int_value(&status_code, sizeof(status_code));
+    STRICT_EXPECTED_CALL(amqpvalue_create_string("xxx"))
+        .SetReturn(test_status_description_key);
+    STRICT_EXPECTED_CALL(amqpvalue_get_map_value(test_application_properties_map, test_status_description_key))
+        .SetReturn(test_status_description_value);
+    STRICT_EXPECTED_CALL(amqpvalue_get_string(test_status_description_value, IGNORED_PTR_ARG))
+        .CopyOutArgumentBuffer_string_value(&test_status_description, sizeof(test_status_description));
+    STRICT_EXPECTED_CALL(singlylinkedlist_get_head_item(test_singlylinkedlist_handle));
+    STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_cancel(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_FAILED_BAD_STATUS, 200, "my error ...", test_message));
+
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(messaging_delivery_accepted());
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_key));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_code_value));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_code_key));
+    STRICT_EXPECTED_CALL(properties_destroy(test_properties));
+    STRICT_EXPECTED_CALL(amqpvalue_destroy(test_application_properties));
+
+    // act
+    result = saved_on_message_received(saved_on_message_received_context, test_message);
+
+    // assert
+    ASSERT_ARE_EQUAL(void_ptr, test_delivery_accepted, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    amqp_management_destroy(amqp_management);
+}
+
 /* Tests_SRS_AMQP_MANAGEMENT_01_174: [ `amqp_management_set_override_status_description_key_name` shall set the status description key name used to parse the status description from the reply messages to `over ride_status_description_key_name`.]*/
 TEST_FUNCTION(when_amqp_management_set_override_status_description_key_name_is_called_the_override_status_code_key_name_is_used)
 {
@@ -4359,6 +4553,7 @@ TEST_FUNCTION(when_amqp_management_set_override_status_description_key_name_is_c
     umock_c_reset_all_calls();
     setup_calls_for_pending_operation_with_correlation_id(0);
     (void)amqp_management_execute_operation_async(amqp_management, "some_operation", "some_type", "en-US", test_message, test_on_amqp_management_execute_operation_complete, (void*)0x4244);
+    saved_on_message_send_complete(saved_on_message_send_complete_context, MESSAGE_SEND_OK, NULL);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(message_get_application_properties(test_message, IGNORED_PTR_ARG))
@@ -4387,7 +4582,7 @@ TEST_FUNCTION(when_amqp_management_set_override_status_description_key_name_is_c
     STRICT_EXPECTED_CALL(singlylinkedlist_item_get_value(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(test_on_amqp_management_execute_operation_complete((void*)0x4244, AMQP_MANAGEMENT_EXECUTE_OPERATION_OK, 200, "my error ...", test_message));
 
-    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(async_operation_destroy(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(singlylinkedlist_remove(test_singlylinkedlist_handle, IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(messaging_delivery_accepted());
     STRICT_EXPECTED_CALL(amqpvalue_destroy(test_status_description_value));

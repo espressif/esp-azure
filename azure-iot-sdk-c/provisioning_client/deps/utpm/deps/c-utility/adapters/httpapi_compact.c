@@ -40,7 +40,7 @@
 /*Codes_SRS_HTTPAPI_COMPACT_21_081: [ The HTTPAPI_ExecuteRequest shall try to read the message with the response up to 20 seconds. ]*/
 #define MAX_RECEIVE_RETRY   200
 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-#define RETRY_INTERVAL_IN_MICROSECONDS  100
+#define RETRY_INTERVAL_IN_MS  100
 
 MU_DEFINE_ENUM_STRINGS(HTTPAPI_RESULT, HTTPAPI_RESULT_VALUES)
 
@@ -56,6 +56,7 @@ typedef struct HTTP_HANDLE_DATA_TAG
     unsigned int    is_io_error : 1;
     unsigned int    is_connected : 1;
     unsigned int    send_completed : 1;
+    bool            tls_renegotiation;
 } HTTP_HANDLE_DATA;
 
 /*the following function does the same as sscanf(pos2, "%d", &sec)*/
@@ -234,7 +235,7 @@ HTTP_HANDLE HTTPAPI_CreateConnection(const char* hostName)
             tlsio_config.port = 443;
             tlsio_config.underlying_io_interface = NULL;
             tlsio_config.underlying_io_parameters = NULL;
-
+            tlsio_config.invoke_on_send_complete_callback_for_fragments = true;
             http_instance->xio_handle = xio_create(platform_get_default_tlsio(), (void*)&tlsio_config);
 
             /*Codes_SRS_HTTPAPI_COMPACT_21_016: [ If the HTTPAPI_CreateConnection failed to create the connection, it shall return NULL as the handle. ]*/
@@ -254,6 +255,7 @@ HTTP_HANDLE HTTPAPI_CreateConnection(const char* hostName)
                 http_instance->certificate = NULL;
                 http_instance->x509ClientCertificate = NULL;
                 http_instance->x509ClientPrivateKey = NULL;
+                http_instance->tls_renegotiation = false;
             }
         }
     }
@@ -312,7 +314,7 @@ void HTTPAPI_CloseConnection(HTTP_HANDLE handle)
                     {
                         LogInfo("Waiting for TLS close connection");
                         /*Codes_SRS_HTTPAPI_COMPACT_21_086: [ The HTTPAPI_CloseConnection shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
                     }
                 }
             }
@@ -505,7 +507,7 @@ static int conn_receive(HTTP_HANDLE_DATA* http_instance, char* buffer, int count
             }
 
             /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-            ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+            ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
         }
     }
 
@@ -600,7 +602,7 @@ static int readLine(HTTP_HANDLE_DATA* http_instance, char* buf, const size_t max
                 if ((countRetry--) > 0)
                 {
                     /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                    ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                    ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
                 }
                 else
                 {
@@ -631,6 +633,12 @@ static int readChunk(HTTP_HANDLE_DATA* http_instance, char* buf, size_t size)
         if (cur == 0)
         {
             break;
+        }
+
+        // on error
+        if (cur < 0)
+        {
+            return cur;
         }
 
         // read cur bytes (might be less than requested)
@@ -688,7 +696,7 @@ static int skipN(HTTP_HANDLE_DATA* http_instance, size_t n)
                     if ((countRetry--) > 0)
                     {
                         /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
                     }
                     else
                     {
@@ -744,6 +752,12 @@ static HTTPAPI_RESULT OpenXIOConnection(HTTP_HANDLE_DATA* http_instance)
             result = HTTPAPI_SET_OPTION_FAILED;
             LogInfo("Could not load the client certificate private key");
         }
+        else if ((http_instance->tls_renegotiation == true) &&
+            (xio_setoption(http_instance->xio_handle, OPTION_SET_TLS_RENEGOTIATION, &http_instance->tls_renegotiation) != 0))
+        {
+            result = HTTPAPI_SET_OPTION_FAILED;
+            LogInfo("Could not load renegotiation flag");
+        }
         else
         {
             /*Codes_SRS_HTTPAPI_COMPACT_21_024: [ The HTTPAPI_ExecuteRequest shall open the transport connection with the host to send the request. ]*/
@@ -774,7 +788,7 @@ static HTTPAPI_RESULT OpenXIOConnection(HTTP_HANDLE_DATA* http_instance)
                     else
                     {
                         /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                        ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
                     }
                 }
             }
@@ -825,7 +839,7 @@ static HTTPAPI_RESULT conn_send_all(HTTP_HANDLE_DATA* http_instance, const unsig
             else
             {
                 /*Codes_SRS_HTTPAPI_COMPACT_21_083: [ The HTTPAPI_ExecuteRequest shall wait, at least, 100 milliseconds between retries. ]*/
-                ThreadAPI_Sleep(RETRY_INTERVAL_IN_MICROSECONDS);
+                ThreadAPI_Sleep(RETRY_INTERVAL_IN_MS);
             }
         }
     }
@@ -1400,6 +1414,7 @@ HTTPAPI_RESULT HTTPAPI_SetOption(HTTP_HANDLE handle, const char* optionName, con
                 tlsio_config.port = 443;
                 tlsio_config.underlying_io_interface =  http_proxy_io_get_interface_description();
                 tlsio_config.underlying_io_parameters = &proxy_config;
+                tlsio_config.invoke_on_send_complete_callback_for_fragments = true;
 
                 http_instance->xio_handle = xio_create(platform_get_default_tlsio(), (void*)&tlsio_config);
 
@@ -1424,6 +1439,12 @@ HTTPAPI_RESULT HTTPAPI_SetOption(HTTP_HANDLE handle, const char* optionName, con
                 OptionHandler_Destroy(xio_options);
             }
         }
+    }
+    else if (strcmp(OPTION_SET_TLS_RENEGOTIATION, optionName) == 0)
+    {
+        bool tls_renegotiation = *(bool*)value;
+        http_instance->tls_renegotiation = tls_renegotiation;
+        result = HTTPAPI_OK;
     }
     else
     {
@@ -1527,6 +1548,21 @@ HTTPAPI_RESULT HTTPAPI_CloneOption(const char* optionName, const void* value, co
             new_proxy_info->password = proxy_data->password;
             new_proxy_info->username = proxy_data->username;
             *savedValue = new_proxy_info;
+            result = HTTPAPI_OK;
+        }
+    }
+    else if (strcmp(OPTION_SET_TLS_RENEGOTIATION, optionName) == 0)
+    {
+        bool* temp = (bool*)malloc(sizeof(bool)); /*shall be freed by HTTPAPIEX_Destroy*/
+        if (temp == NULL)
+        {
+            result = HTTPAPI_ERROR;
+            LogError("malloc failed (result = %" PRI_MU_ENUM ")", MU_ENUM_VALUE(HTTPAPI_RESULT, result));
+        }
+        else
+        {
+            *temp = *(bool*)value;
+            *savedValue = temp;
             result = HTTPAPI_OK;
         }
     }

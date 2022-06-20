@@ -414,11 +414,15 @@ static int constructConnPayload(BUFFER_HANDLE ctrlPacket, const MQTT_CLIENT_OPTI
         willTopicLen = strlen(mqttOptions->willTopic);
     }
 
-    currLen = BUFFER_length(ctrlPacket);
+    currLen = ctrlPacket == NULL ? 0 : BUFFER_length(ctrlPacket);
     totalLen = clientLen + usernameLen + passwordLen + willMessageLen + willTopicLen + spaceLen;
 
+    if (ctrlPacket == NULL)
+    {
+        result = MU_FAILURE;
+    }
     // Validate the Username & Password
-    if (clientLen > USHRT_MAX)
+    else if (clientLen > USHRT_MAX)
     {
         result = MU_FAILURE;
     }
@@ -567,6 +571,16 @@ static int prepareheaderDataInfo(MQTTCODEC_INSTANCE* codecData, uint8_t remainLe
                 }
             }
         }
+    }
+    else if (codecData->remainLenIndex == (sizeof(codecData->storeRemainLen) / sizeof(codecData->storeRemainLen[0])))
+    {
+        // The maximum number of bytes in the Remaining Length field is four
+        // This allows applications to send Control Packets of size up to 268,435,455 (256 MB). 
+        // The representation of this number on the wire is: 0xFF, 0xFF, 0xFF, 0x7F.
+
+        // The last byte has exceed the max value of 0x7F
+        LogError("MQTT packet len is invalid");
+        result = MU_FAILURE;
     }
     return result;
 }
@@ -1066,6 +1080,49 @@ int mqtt_codec_bytesReceived(MQTTCODEC_HANDLE handle, const unsigned char* buffe
                 if (codec_Data->currPacket == UNKNOWN_TYPE)
                 {
                     codec_Data->currPacket = processControlPacketType(iterator, &codec_Data->headerFlags);
+
+                    // validate packet type and invalid reserved header flags
+                    switch (codec_Data->currPacket)
+                    {
+                        case PACKET_INVALID1_TYPE:
+                        case PACKET_INVALID2_TYPE:
+                            codec_Data->currPacket = PACKET_TYPE_ERROR;
+                            result = MU_FAILURE;
+                            break;
+
+                        case CONNECT_TYPE:
+                        case CONNACK_TYPE:
+                        case PUBACK_TYPE:
+                        case PUBREC_TYPE:
+                        case PUBCOMP_TYPE:
+                        case SUBACK_TYPE:
+                        case UNSUBACK_TYPE:
+                        case PINGREQ_TYPE:
+                        case PINGRESP_TYPE:
+                        case DISCONNECT_TYPE:
+                            if (codec_Data->headerFlags & 0x0F) // flags must be all zeros
+                            {
+                                codec_Data->currPacket = PACKET_TYPE_ERROR;
+                                result = MU_FAILURE;
+                            }
+                            break;
+
+                        case PUBREL_TYPE:
+                        case SUBSCRIBE_TYPE:
+                        case UNSUBSCRIBE_TYPE:
+                            if ((codec_Data->headerFlags & 0x0F) != 0x02) // only bit 1 must be set
+                            {
+                                codec_Data->currPacket = PACKET_TYPE_ERROR;
+                                result = MU_FAILURE;
+                            }
+                            break;
+
+                        case PUBLISH_TYPE:
+                        case CONTROL_PACKET_TYPE_INVALID: 
+                        case PACKET_TYPE_ERROR:
+                        case UNKNOWN_TYPE:
+                            break;
+                    }
                 }
                 else
                 {
@@ -1077,8 +1134,17 @@ int mqtt_codec_bytesReceived(MQTTCODEC_HANDLE handle, const unsigned char* buffe
                     }
                     else if (codec_Data->currPacket == PINGRESP_TYPE)
                     {
-                        /* Codes_SRS_MQTT_CODEC_07_034: [Upon a constructing a complete MQTT packet mqtt_codec_bytesReceived shall call the ON_PACKET_COMPLETE_CALLBACK function.] */
-                        completePacketData(codec_Data);
+                        // PINGRESP must not have a payload
+                        if (((int8_t*)buffer)[index] == 0)
+                        {
+                            /* Codes_SRS_MQTT_CODEC_07_034: [Upon a constructing a complete MQTT packet mqtt_codec_bytesReceived shall call the ON_PACKET_COMPLETE_CALLBACK function.] */
+                            completePacketData(codec_Data);
+                        }
+                        else
+                        {
+                            codec_Data->currPacket = PACKET_TYPE_ERROR;
+                            result = MU_FAILURE;
+                        }
                     }
                 }
             }

@@ -1,7 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
 usePermissiveRulesForSdkSamplesAndTests()
 
@@ -31,6 +31,6 @@ add_subdirectory(serializer_dt_int)
 add_subdirectory(serializer_dt_ut)
 endif()
 
-if(${use_amqp} AND ${use_http} AND (${run_e2e_tests} OR ${nuget_e2e_tests}))
+if(${use_amqp} AND ${use_http} AND ${run_e2e_tests})
     add_subdirectory(serializer_e2e)
 endif()

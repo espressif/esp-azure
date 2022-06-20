@@ -17,11 +17,7 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-#if defined(_WIN32) || defined(__MBED__) || defined(__APPLE__)
     typedef uint_fast64_t tickcounter_ms_t; // Use 64-bit because of 32-bit is going to roll over back to zero after roughly 49.7 days that is not good for IoT devices which need keep running for months
-#else
-    typedef uint_fast32_t tickcounter_ms_t;
-#endif
     typedef struct TICK_COUNTER_INSTANCE_TAG *TICK_COUNTER_HANDLE;
 
     MOCKABLE_FUNCTION(, TICK_COUNTER_HANDLE, tickcounter_create);

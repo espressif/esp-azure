@@ -4,6 +4,7 @@
 #ifndef LINUX_TIME_H
 #define LINUX_TIME_H
 
+#include <stdint.h>
 #include <time.h>
 #include <pthread.h>
 
@@ -13,9 +14,9 @@ extern clockid_t time_basis;
 
 extern void set_time_basis(void);
 extern int get_time_ns(struct timespec* ts);
-extern time_t get_time_ms(void);
+extern int64_t get_time_ms(void);
 
-#define INVALID_TIME_VALUE      (time_t)(-1)
+#define INVALID_TIME_VALUE      (int64_t)(-1)
 
 
 #define NANOSECONDS_IN_1_SECOND 1000000000L

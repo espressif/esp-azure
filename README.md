@@ -8,6 +8,18 @@
 - [Monitoring Results](#monitoring)
 - [Troubleshooting](#troubleshooting)
 
+## 2021 Update
+
+<a name="2021 update"></a>
+
+Since this library has been published, Microsoft has created newer versions of the Azure SDK for usage with the Espressif ESP32. This new library is better suited for microcontrollers, great for composition with your own network stack and officially supported by Microsoft. 
+
+The first one, [Azure IoT middleware for FreeRTOS](https://github.com/Azure/azure-iot-middleware-freertos), is based on ESP-IDF and FreeRTOS and it has [samples](https://github.com/Azure-Samples/iot-middleware-freertos-samples) for IoT Hub and IoT Central using the device provisioning service (DPS).
+
+The second one is based on [Azure IoT for C library for Arduino](https://github.com/Azure/azure-sdk-for-c-arduino) and also has samples for IoT Hub. 
+
+If you can, **avoid using this library for any new projects**.  
+
 ## Introduction
 
 <a name="introduction"></a>
@@ -30,7 +42,7 @@ This project is to be used with Espressif's IoT Development Framework, [ESP IDF]
 - In a separate folder, clone the esp-azure project as follows (please note the --recursive option, which is required to clone the various git submodules required by esp-azure)
 
 ``` bash
-$ git clone --recursive https://github.com/aleblsv/esp-azure
+$ git clone --recursive https://github.com/espressif/esp-azure.git
 ```
 
 > Note that if you ever change the branch or the git head of either esp-idf or esp-azure, ensure that all the submodules of the git repo are in sync by executing `git submodule update --init --recursive`

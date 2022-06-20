@@ -1,9 +1,7 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-set(tlsio_connect_c_files
-    main.c
-)
+generate_cpp_wrapper(tlsio_connect_c_files main)
 
 IF(WIN32)
     #windows needs this define

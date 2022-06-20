@@ -37,6 +37,7 @@ typedef struct MESSAGE_WITH_CALLBACK_TAG
     MESSAGE_SENDER_HANDLE message_sender;
     MESSAGE_SEND_STATE message_send_state;
     tickcounter_ms_t timeout;
+    ASYNC_OPERATION_HANDLE transfer_async_operation;
 } MESSAGE_WITH_CALLBACK;
 
 DEFINE_ASYNC_OPERATION_CONTEXT(MESSAGE_WITH_CALLBACK);
@@ -108,7 +109,8 @@ static void on_delivery_settled(void* context, delivery_number delivery_no, LINK
     MESSAGE_SENDER_INSTANCE* message_sender = (MESSAGE_SENDER_INSTANCE*)message_with_callback->message_sender;
     (void)delivery_no;
 
-    if (message_with_callback->on_message_send_complete != NULL)
+    if (message_with_callback != NULL && 
+        message_with_callback->on_message_send_complete != NULL)
     {
         switch (reason)
         {
@@ -125,32 +127,43 @@ static void on_delivery_settled(void* context, delivery_number delivery_no, LINK
                 if (descriptor == NULL)
                 {
                     LogError("Error getting descriptor for delivery state");
-                }
-                else if (is_accepted_type_by_descriptor(descriptor))
-                {
-                    message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_OK, described);
+                    message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_ERROR, described);
                 }
                 else
                 {
-                    message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_ERROR, described);
+                    if (is_accepted_type_by_descriptor(descriptor))
+                    {
+                        message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_OK, described);
+                    }
+                    else
+                    {
+                        message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_ERROR, described);
+                    }
                 }
+
+                remove_pending_message(message_sender, pending_send);
             }
 
             break;
         case LINK_DELIVERY_SETTLE_REASON_SETTLED:
             message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_OK, NULL);
+            remove_pending_message(message_sender, pending_send);
             break;
         case LINK_DELIVERY_SETTLE_REASON_TIMEOUT:
             message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_TIMEOUT, NULL);
+            remove_pending_message(message_sender, pending_send);
+            break;
+        case LINK_DELIVERY_SETTLE_REASON_CANCELLED:
+            message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_CANCELLED, NULL);
+            remove_pending_message(message_sender, pending_send);
             break;
         case LINK_DELIVERY_SETTLE_REASON_NOT_DELIVERED:
         default:
             message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_ERROR, NULL);
+            remove_pending_message(message_sender, pending_send);
             break;
         }
     }
-
-    remove_pending_message(message_sender, pending_send);
 }
 
 static int encode_bytes(void* context, const unsigned char* bytes, size_t length)
@@ -179,6 +192,23 @@ static void log_message_chunk(MESSAGE_SENDER_INSTANCE* message_sender, const cha
         }
     }
 #endif
+}
+
+// Auxiliary function to verify if a given message is still in the pending messages queue.
+static bool is_message_in_queue(MESSAGE_SENDER_HANDLE message_sender, ASYNC_OPERATION_HANDLE message)
+{
+    bool result = false;
+
+    for (size_t i = 0; i < message_sender->message_count; i++)
+    {
+        if (message_sender->messages[i] == message)
+        {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
 }
 
 static SEND_ONE_MESSAGE_RESULT send_one_message(MESSAGE_SENDER_INSTANCE* message_sender, ASYNC_OPERATION_HANDLE pending_send, MESSAGE_HANDLE message)
@@ -547,6 +577,14 @@ static SEND_ONE_MESSAGE_RESULT send_one_message(MESSAGE_SENDER_INSTANCE* message
                     }
                     else
                     {
+                        // For messages that get atomically sent and settled by link_transfer_async,
+                        // on_delivery_settled is invoked and the message destroyed.
+                        // So at this point we shall verify if the message still exists and is in the queue.
+                        if (is_message_in_queue(message_sender, pending_send))
+                        {
+                            message_with_callback->transfer_async_operation = transfer_async_operation;
+                        }
+
                         result = SEND_ONE_MESSAGE_OK;
                     }
                 }
@@ -834,12 +872,19 @@ int messagesender_close(MESSAGE_SENDER_HANDLE message_sender)
 static void messagesender_send_cancel_handler(ASYNC_OPERATION_HANDLE send_operation)
 {
     MESSAGE_WITH_CALLBACK* message_with_callback = GET_ASYNC_OPERATION_CONTEXT(MESSAGE_WITH_CALLBACK, send_operation);
+    MESSAGE_SENDER_HANDLE messager_sender = message_with_callback->message_sender;
+
     if (message_with_callback->on_message_send_complete != NULL)
     {
         message_with_callback->on_message_send_complete(message_with_callback->context, MESSAGE_SEND_CANCELLED, NULL);
     }
 
-    remove_pending_message(message_with_callback->message_sender, send_operation);
+    if (message_with_callback->transfer_async_operation != NULL)
+    {
+        async_operation_cancel(message_with_callback->transfer_async_operation);
+    }
+
+    remove_pending_message(messager_sender, send_operation);
 }
 
 ASYNC_OPERATION_HANDLE messagesender_send_async(MESSAGE_SENDER_HANDLE message_sender, MESSAGE_HANDLE message, ON_MESSAGE_SEND_COMPLETE on_message_send_complete, void* callback_context, tickcounter_ms_t timeout)

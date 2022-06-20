@@ -123,6 +123,7 @@ void consolelogger_log_with_GetLastError(const char* file, const char* func, int
     char* systemMessage;
     int userMessage_should_be_freed;
     char* userMessage;
+    char* timeString;
 
     va_list args;
     va_start(args, format);
@@ -148,13 +149,20 @@ void consolelogger_log_with_GetLastError(const char* file, const char* func, int
         lastErrorAsString_should_be_freed = 1;
     }
 
+#if LOGGER_DISABLE_PAL
     t = time(NULL);
-    systemMessage = printf_alloc("Error: Time:%.24s File:%s Func:%s Line:%d %s", ctime(&t), file, func, line, lastErrorAsString);
+    timeString = ctime(&t);
+#else  // LOGGER_DISABLE_PAL
+    t = get_time(NULL);
+    timeString = get_ctime(&t);
+#endif // LOGGER_DISABLE_PAL
+
+    systemMessage = printf_alloc("Error: Time:%.24s File:%s Func:%s Line:%d %s", timeString, file, func, line, lastErrorAsString);
 
     if (systemMessage == NULL)
     {
         systemMessage = "";
-        (void)printf("Error: [FAILED] Time:%.24s File : %s Func : %s Line : %d %s", ctime(&t), file, func, line, lastErrorAsString);
+        (void)printf("Error: [FAILED] Time:%.24s File : %s Func : %s Line : %d %s", timeString, file, func, line, lastErrorAsString);
         systemMessage_should_be_freed = 0;
     }
     else
@@ -201,10 +209,17 @@ __attribute__ ((format (printf, 6, 7)))
 void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* func, int line, unsigned int options, const char* format, ...)
 {
     time_t t;
+    char* timeString;
     va_list args;
     va_start(args, format);
 
+#if LOGGER_DISABLE_PAL
     t = time(NULL);
+    timeString = ctime(&t);
+#else  // LOGGER_DISABLE_PAL
+    t = get_time(NULL);
+    timeString = get_ctime(&t);
+#endif // LOGGER_DISABLE_PAL
 
     switch (log_category)
     {
@@ -212,7 +227,7 @@ void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* 
         (void)printf("Info: ");
         break;
     case AZ_LOG_ERROR:
-        (void)printf("Error: Time:%.24s File:%s Func:%s Line:%d ", ctime(&t), file, func, line);
+        (void)printf("Error: Time:%.24s File:%s Func:%s Line:%d ", timeString, file, func, line);
         break;
     default:
         break;

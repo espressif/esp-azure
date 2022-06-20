@@ -39,7 +39,8 @@ LOCK_RESULT Lock(LOCK_HANDLE handle)
     }
     else
     {
-        if (pthread_mutex_lock((pthread_mutex_t*)handle) == 0)
+        int return_code = pthread_mutex_lock((pthread_mutex_t*)handle);
+        if (return_code == 0)
         {
             /* Codes_SRS_LOCK_10_005: [Lock on success shall return LOCK_OK] */
             result = LOCK_OK;
@@ -47,7 +48,7 @@ LOCK_RESULT Lock(LOCK_HANDLE handle)
         else
         {
             /* Codes_SRS_LOCK_10_006: [Lock on error shall return LOCK_ERROR] */
-            LogError("pthread_mutex_lock failed.");
+            LogError("pthread_mutex_lock failed (%d).", return_code);
             result = LOCK_ERROR;
         }
     }
@@ -66,7 +67,8 @@ LOCK_RESULT Unlock(LOCK_HANDLE handle)
     }
     else
     {
-        if (pthread_mutex_unlock((pthread_mutex_t*)handle) == 0)
+        int return_code = pthread_mutex_unlock((pthread_mutex_t*)handle);
+        if (return_code == 0)
         {
             /* Codes_SRS_LOCK_10_009: [Unlock on success shall return LOCK_OK] */
             result = LOCK_OK;
@@ -74,7 +76,7 @@ LOCK_RESULT Unlock(LOCK_HANDLE handle)
         else
         {
             /* Codes_SRS_LOCK_10_010: [Unlock on error shall return LOCK_ERROR] */
-            LogError("pthread_mutex_unlock failed.");
+            LogError("pthread_mutex_unlock failed (%d).", return_code);
             result = LOCK_ERROR;
         }
     }

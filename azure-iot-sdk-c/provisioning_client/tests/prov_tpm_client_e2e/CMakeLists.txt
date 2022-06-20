@@ -1,9 +1,9 @@
 #Copyright (c) Microsoft. All rights reserved.
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.5)
 
-compileAsC11()
+compileAsC99()
 set(theseTestsName prov_tpm_client_e2e)
 
 set(${theseTestsName}_test_files
@@ -75,7 +75,9 @@ else()
     endif()
 endif()
 
-target_link_libraries(${theseTestsName}_exe provisioning_service_client)
-
-link_security_client(${theseTestsName}_exe)
-linkSharedUtil(${theseTestsName}_exe)
+target_link_libraries(${theseTestsName}_exe
+    provisioning_service_client
+    prov_auth_client
+    hsm_security_client
+    aziotsharedutil
+)

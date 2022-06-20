@@ -255,7 +255,7 @@ BEGIN_TEST_SUITE(Vector_UnitTests)
     TEST_FUNCTION(VECTOR_push_back_fails_if_handle_is_NULL)
     {
         ///arrange
-        VECTOR_UNITTEST vItem;
+        VECTOR_UNITTEST vItem = { 0 };
 
         ///act
         int result = VECTOR_push_back(NULL, &vItem, 1);

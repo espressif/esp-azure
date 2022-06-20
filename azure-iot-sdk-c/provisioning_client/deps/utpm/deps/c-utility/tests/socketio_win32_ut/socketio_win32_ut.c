@@ -506,7 +506,6 @@ TEST_FUNCTION(socketio_create_succeeds)
     EXPECTED_CALL(singlylinkedlist_create());
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
     EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    EXPECTED_CALL(gballoc_calloc(IGNORED_NUM_ARG, IGNORED_NUM_ARG));
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
     EXPECTED_CALL(gballoc_malloc(IGNORED_NUM_ARG));
 

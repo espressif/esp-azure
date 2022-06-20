@@ -479,6 +479,87 @@ TEST_FUNCTION(constbuffer_array_batcher_batch_with_2_arrays_with_1_and_3_buffers
     real_CONSTBUFFER_DecRef(actual_buffers[4]);
 }
 
+TEST_FUNCTION(constbuffer_array_batcher_batch_with_3_arrays_with_1_and_0_and_3_buffers_succeeds)
+{
+    // arrange
+    CONSTBUFFER_ARRAY_HANDLE result;
+    CONSTBUFFER_ARRAY_HANDLE test_arrays[3];
+    CONSTBUFFER_HANDLE actual_buffers[5];
+    CONSTBUFFER_HANDLE header_buffer;
+    uint8_t test_buffer_payload[] = { 0x42 };
+    CONSTBUFFER_HANDLE test_buffers[4];
+    size_t i;
+    for (i = 0; i < 4; i++)
+    {
+        test_buffers[i] = real_CONSTBUFFER_Create(test_buffer_payload, sizeof(test_buffer_payload));
+    }
+    uint8_t expected_header_memory[] = { 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03 };
+    test_arrays[0] = real_constbuffer_array_create(test_buffers, 1);
+    test_arrays[1] = real_constbuffer_array_create_empty();
+    test_arrays[2] = real_constbuffer_array_create(test_buffers + 1, 3);
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(malloc(sizeof(uint32_t) * 4));
+    STRICT_EXPECTED_CALL(write_uint32_t(IGNORED_PTR_ARG, 3));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[0], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(write_uint32_t(IGNORED_PTR_ARG, 1));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[1], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(write_uint32_t(IGNORED_PTR_ARG, 0));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[2], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(write_uint32_t(IGNORED_PTR_ARG, 3));
+    STRICT_EXPECTED_CALL(malloc(sizeof(CONSTBUFFER_HANDLE) * 5));
+    STRICT_EXPECTED_CALL(CONSTBUFFER_CreateWithMoveMemory(IGNORED_PTR_ARG, sizeof(uint32_t) * 4))
+        .ValidateArgumentBuffer(1, expected_header_memory, sizeof(expected_header_memory))
+        .CaptureReturn(&header_buffer);
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[0], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer(test_arrays[0], 0));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[1], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer_count(test_arrays[2], IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer(test_arrays[2], 0));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer(test_arrays[2], 1));
+    STRICT_EXPECTED_CALL(constbuffer_array_get_buffer(test_arrays[2], 2));
+    STRICT_EXPECTED_CALL(constbuffer_array_create(IGNORED_PTR_ARG, 5));
+    STRICT_EXPECTED_CALL(CONSTBUFFER_DecRef(IGNORED_PTR_ARG))
+        .ValidateArgumentValue_constbufferHandle(&header_buffer);
+    STRICT_EXPECTED_CALL(CONSTBUFFER_DecRef(test_buffers[0]));
+    STRICT_EXPECTED_CALL(CONSTBUFFER_DecRef(test_buffers[1]));
+    STRICT_EXPECTED_CALL(CONSTBUFFER_DecRef(test_buffers[2]));
+    STRICT_EXPECTED_CALL(CONSTBUFFER_DecRef(test_buffers[3]));
+    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+
+    // act
+    result = constbuffer_array_batcher_batch(test_arrays, 3);
+
+    // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    ASSERT_IS_NOT_NULL(result);
+    actual_buffers[0] = real_constbuffer_array_get_buffer(result, 0);
+    ASSERT_ARE_EQUAL(void_ptr, header_buffer, actual_buffers[0]);
+    actual_buffers[1] = real_constbuffer_array_get_buffer(result, 1);
+    ASSERT_ARE_EQUAL(void_ptr, test_buffers[0], actual_buffers[1]);
+    actual_buffers[2] = real_constbuffer_array_get_buffer(result, 2);
+    ASSERT_ARE_EQUAL(void_ptr, test_buffers[1], actual_buffers[2]);
+    actual_buffers[3] = real_constbuffer_array_get_buffer(result, 3);
+    ASSERT_ARE_EQUAL(void_ptr, test_buffers[2], actual_buffers[3]);
+    actual_buffers[4] = real_constbuffer_array_get_buffer(result, 4);
+    ASSERT_ARE_EQUAL(void_ptr, test_buffers[3], actual_buffers[4]);
+
+    // cleanup
+    real_constbuffer_array_dec_ref(test_arrays[0]);
+    real_constbuffer_array_dec_ref(test_arrays[1]);
+    real_constbuffer_array_dec_ref(test_arrays[2]);
+    real_constbuffer_array_dec_ref(result);
+    real_CONSTBUFFER_DecRef(test_buffers[0]);
+    real_CONSTBUFFER_DecRef(test_buffers[1]);
+    real_CONSTBUFFER_DecRef(test_buffers[2]);
+    real_CONSTBUFFER_DecRef(test_buffers[3]);
+    real_CONSTBUFFER_DecRef(actual_buffers[0]);
+    real_CONSTBUFFER_DecRef(actual_buffers[1]);
+    real_CONSTBUFFER_DecRef(actual_buffers[2]);
+    real_CONSTBUFFER_DecRef(actual_buffers[3]);
+    real_CONSTBUFFER_DecRef(actual_buffers[4]);
+}
+
 /* Tests_SRS_CONSTBUFFER_ARRAY_BATCHER_01_010: [ If any error occurrs, constbuffer_array_batcher_batch shall fail and return NULL. ]*/
 TEST_FUNCTION(when_underlying_calls_fail_constbuffer_array_batcher_batch_fails)
 {

@@ -32,7 +32,9 @@ extern "C" {
     PINGRESP_TYPE, 0xD0, \
     DISCONNECT_TYPE, 0xE0, \
     PACKET_TYPE_ERROR, 0xE1, /* 0xE1 was assigned because ENUM_2 needs it */ \
-    UNKNOWN_TYPE, 0xE2 /* 0xE2 was assigned because ENUM_2 needs it */
+    UNKNOWN_TYPE, 0xE2,      /* 0xE2 was assigned because ENUM_2 needs it */ \
+    PACKET_INVALID1_TYPE, 0x00, \
+    PACKET_INVALID2_TYPE, 0xF0
 
 MU_DEFINE_ENUM_2(CONTROL_PACKET_TYPE, CONTROL_PACKET_TYPE_VALUES)
 
