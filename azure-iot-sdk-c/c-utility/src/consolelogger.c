@@ -208,38 +208,38 @@ __attribute__ ((format (printf, 6, 7)))
 #endif
 void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* func, int line, unsigned int options, const char* format, ...)
 {
-    time_t t;
-    char* timeString;
-    va_list args;
-    va_start(args, format);
-
-#if LOGGER_DISABLE_PAL
-    t = time(NULL);
-    timeString = ctime(&t);
-#else  // LOGGER_DISABLE_PAL
-    t = get_time(NULL);
-    timeString = get_ctime(&t);
-#endif // LOGGER_DISABLE_PAL
-
-    switch (log_category)
-    {
-    case AZ_LOG_INFO:
-        (void)printf("Info: ");
-        break;
-    case AZ_LOG_ERROR:
-        (void)printf("Error: Time:%.24s File:%s Func:%s Line:%d ", timeString, file, func, line);
-        break;
-    default:
-        break;
-    }
-
-    (void)vprintf(format, args);
-    va_end(args);
-
-    (void)log_category;
-    if (options & LOG_LINE)
-    {
-        (void)printf("\r\n");
-    }
+//    time_t t;
+//    char* timeString;
+//    va_list args;
+//    va_start(args, format);
+//
+//#if LOGGER_DISABLE_PAL
+//    t = time(NULL);
+//    timeString = ctime(&t);
+//#else  // LOGGER_DISABLE_PAL
+//    t = get_time(NULL);
+//    timeString = get_ctime(&t);
+//#endif // LOGGER_DISABLE_PAL
+//
+//    switch (log_category)
+//    {
+//    case AZ_LOG_INFO:
+//        (void)printf("Info: ");
+//        break;
+//    case AZ_LOG_ERROR:
+//        (void)printf("Error: Time:%.24s File:%s Func:%s Line:%d ", timeString, file, func, line);
+//        break;
+//    default:
+//        break;
+//    }
+//
+//    (void)vprintf(format, args);
+//    va_end(args);
+//
+//    (void)log_category;
+//    if (options & LOG_LINE)
+//    {
+//        (void)printf("\r\n");
+//    }
 }
 

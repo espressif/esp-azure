@@ -70,6 +70,18 @@ typedef struct TLS_IO_INSTANCE_TAG
     TLSIO_OPTIONS options;
 } TLS_IO_INSTANCE;
 
+static uint16_t tlsio_esp_tls_err_count;
+
+uint16_t tlsio_esp_tls_err_count_get(void)
+{
+    return tlsio_esp_tls_err_count;
+}
+
+void tlsio_esp_tls_err_count_reset(void)
+{
+    tlsio_esp_tls_err_count = 0;
+}
+
 /* Codes_SRS_TLSIO_30_005: [ The phrase "enter TLSIO_STATE_EXT_ERROR" means the adapter shall call the on_io_error function and pass the on_io_error_context that was supplied in tlsio_open_async. ]*/
 static void enter_tlsio_error_state(TLS_IO_INSTANCE* tls_io_instance)
 {
@@ -500,6 +512,7 @@ static void tlsio_esp_tls_dowork(CONCRETE_IO_HANDLE tls_io)
             }
             break;
         case TLSIO_STATE_ERROR:
+        	tlsio_esp_tls_err_count++;
             /* Codes_SRS_TLSIO_30_071: [ If the adapter is in TLSIO_STATE_EXT_ERROR then tlsio_dowork shall do nothing. ]*/
             // There's nothing valid to do here but wait to be retried
             break;
@@ -513,6 +526,7 @@ static void tlsio_esp_tls_dowork(CONCRETE_IO_HANDLE tls_io)
 static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffer, size_t size, ON_SEND_COMPLETE on_send_complete, void* callback_context)
 {
     int result;
+
     if (on_send_complete == NULL)
     {
         /* Codes_SRS_TLSIO_30_062: [ If the on_send_complete is NULL, tlsio_esp_tls_send_async shall log the error and return FAILURE. ]*/
@@ -593,6 +607,7 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
                                     /* Codes_SRS_TLSIO_30_063: [ On success, tlsio_esp_tls_send_async shall enqueue for transmission the  on_send_complete , the  callback_context , the  size , and the contents of  buffer  and then return 0. ]*/
                                     dowork_send(tls_io_instance);
                                     result = 0;
+                                    tlsio_esp_tls_err_count = 0;
                                 }
                             }
                         }
@@ -601,6 +616,10 @@ static int tlsio_esp_tls_send_async(CONCRETE_IO_HANDLE tls_io, const void* buffe
             }
         }
         /* Codes_SRS_TLSIO_30_066: [ On failure, on_send_complete shall not be called. ]*/
+    }
+    if(result == MU_FAILURE)
+    {
+        tlsio_esp_tls_err_count++;
     }
     return result;
 }
