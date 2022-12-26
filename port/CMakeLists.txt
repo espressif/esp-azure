@@ -129,6 +129,7 @@ set_source_files_properties(
 
 component_compile_options (
 	-Wno-unused-function
+	-Wno-unused-variable
 	-Wno-missing-braces
 	-Wno-missing-field-initializers
 	-Wno-unknown-pragmas
