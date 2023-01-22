@@ -10,11 +10,13 @@
 #include "azure_c_shared_utility/tlsio_openssl.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "esp_log.h"
+#include "../../main/element-hmi-platform/logic/logger.h"
 #include "tlsio_pal.h"
 
 #include "lwip/apps/sntp.h"
 
 static const char* TAG = "platform";
+#define LOG_SOURCE_ID LOG_SOURCE_SYSTEM
 
 time_t sntp_get_current_timestamp();
 void initialize_sntp(void);

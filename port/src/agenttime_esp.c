@@ -10,7 +10,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "logger.h"
+#include "../../main/element-hmi-platform/logic/logger.h"
 #include "esp_attr.h"
 
 #include "lwip/err.h"
