@@ -10,6 +10,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "logger.h"
 #include "esp_attr.h"
 
 #include "lwip/err.h"
@@ -20,7 +21,7 @@
 
 void initialize_sntp(void)
 {
-//    printf("Initializing SNTP\n");
+//    STRAUSS_LOG(eRecordDisable,"Initializing SNTP\n");
 //    sntp_setoperatingmode(SNTP_OPMODE_POLL);
 //    sntp_setservername(0, "pool.ntp.org");
 //    sntp_init();
@@ -33,15 +34,15 @@ static void obtain_time(void)
 //    struct tm timeinfo = { 0 };
 //    int retry = 0;
 //
-//    printf("Waiting for system time to be set...\r\n");
+//    STRAUSS_LOG(eRecordDisable,"Waiting for system time to be set...\r\n");
 //    while(timeinfo.tm_year < (2016 - 1900) ) {
 //        retry++;
-////        printf("Waiting for system time to be set... tm_year:%d[times:%d]\n", timeinfo.tm_year, ++retry);
+////        STRAUSS_LOG(eRecordDisable,"Waiting for system time to be set... tm_year:%d[times:%d]\n", timeinfo.tm_year, ++retry);
 //        vTaskDelay(2000 / portTICK_PERIOD_MS);
 //        time(&now);
 //        localtime_r(&now, &timeinfo);
 //    }
-//    printf("system time is set\r\n");
+//    STRAUSS_LOG(eRecordDisable,"system time is set\r\n");
 }
 
 time_t sntp_get_current_timestamp()
@@ -53,7 +54,7 @@ time_t sntp_get_current_timestamp()
 	// Is time set? If not, tm_year will be (1970 - 1900).
 	if (timeinfo.tm_year < (2016 - 1900)) {
 
-//        printf("WARNING!!! ToDo: Need use @ref azure_client_check_time\r\n Time is not set yet. Connecting to WiFi and getting time over NTP. timeinfo.tm_year:%d\n",timeinfo.tm_year);
+//        STRAUSS_LOG(eRecordDisable, "WARNING!!! ToDo: Need use @ref azure_client_check_time\r\n Time is not set yet. Connecting to WiFi and getting time over NTP. timeinfo.tm_year:%d\n",timeinfo.tm_year);
 //		obtain_time();
 
 		// update 'now' variable with current time

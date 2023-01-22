@@ -33,8 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "logger.h"
 
-#define TEST(A) printf("%d %-72s-", __LINE__, #A);\
+#define TEST(A) STRAUSS_LOG(eRecordDisable, "%d %-72s-", __LINE__, #A);\
                 if(A){puts(" OK");tests_passed++;}\
                 else{puts(" FAIL");tests_failed++;}
 #define STREQ(A, B) ((A) && (B) ? strcmp((A), (B)) == 0 : 0)
@@ -98,8 +99,8 @@ int main(int argc, char *argv[]) {
     test_suite_11();
     test_memory_leaks();
 
-    printf("Tests failed: %d\n", tests_failed);
-    printf("Tests passed: %d\n", tests_passed);
+    STRAUSS_LOG(eRecordDisable,"Tests failed: %d\n", tests_failed);
+    STRAUSS_LOG(eRecordDisable,"Tests passed: %d\n", tests_passed);
     return 0;
 }
 
@@ -605,7 +606,7 @@ void print_commits_info(const char *username, const char *repo) {
     sprintf(curl_command,
         "curl -s \"https://api.github.com/repos/%s/%s/commits\" > %s",
         username, repo, output_filename);
-    sprintf(cleanup_command, "rm -f %s", output_filename);
+    STRAUSS_LOG(eRecordDisable,cleanup_command, "rm -f %s", output_filename);
     system(curl_command);
 
     /* parsing json and validating output */
@@ -617,10 +618,10 @@ void print_commits_info(const char *username, const char *repo) {
 
     /* getting array from root value and printing commit info */
     commits = json_value_get_array(root_value);
-    printf("%-10.10s %-10.10s %s\n", "Date", "SHA", "Author");
+    STRAUSS_LOG(eRecordDisable,"%-10.10s %-10.10s %s\n", "Date", "SHA", "Author");
     for (i = 0; i < json_array_get_count(commits); i++) {
         commit = json_array_get_object(commits, i);
-        printf("%.10s %.10s %s\n",
+        STRAUSS_LOG(eRecordDisable,"%.10s %.10s %s\n",
                json_object_dotget_string(commit, "commit.author.date"),
                json_object_get_string(commit, "sha"),
                json_object_dotget_string(commit, "commit.author.name"));
@@ -644,7 +645,7 @@ void persistence_example(void) {
         json_serialize_to_file(user_data, "user_data.json");
     }
     name = json_object_get_string(json_object(user_data), "name");
-    printf("Hello, %s.", name);
+    STRAUSS_LOG(eRecordDisable,"Hello, %s.", name);
     json_value_free(schema);
     json_value_free(user_data);
     return;

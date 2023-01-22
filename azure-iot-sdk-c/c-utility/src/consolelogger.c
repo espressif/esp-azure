@@ -58,7 +58,7 @@ static char* lastErrorToString(DWORD lastError)
         result = printf_alloc(""); /*no error should appear*/
         if (result == NULL)
         {
-            (void)printf("failure in printf_alloc");
+           STRAUSS_LOG(eRecordDisable,"failure in printf_alloc");
         }
         else
         {
@@ -73,7 +73,7 @@ static char* lastErrorToString(DWORD lastError)
             result = printf_alloc("GetLastError()=0X%x", lastError);
             if (result == NULL)
             {
-                (void)printf("failure in printf_alloc\n");
+               STRAUSS_LOG(eRecordDisable,"failure in printf_alloc\n");
                 /*return as is*/
             }
             else
@@ -99,7 +99,7 @@ static char* lastErrorToString(DWORD lastError)
 
             if (result == NULL)
             {
-                (void)printf("failure in printf_alloc\n");
+              STRAUSS_LOG(eRecordDisable,"failure in printf_alloc\n");
                 /*return as is*/
             }
             else
@@ -140,7 +140,7 @@ void consolelogger_log_with_GetLastError(const char* file, const char* func, int
     lastErrorAsString = lastErrorToString(lastError);
     if (lastErrorAsString == NULL)
     {
-        (void)printf("failure in lastErrorToString");
+        STRAUSS_LOG(eRecordDisable, "failure in lastErrorToString");
         lastErrorAsString = "";
         lastErrorAsString_should_be_freed = 0;
     }
@@ -162,7 +162,7 @@ void consolelogger_log_with_GetLastError(const char* file, const char* func, int
     if (systemMessage == NULL)
     {
         systemMessage = "";
-        (void)printf("Error: [FAILED] Time:%.24s File : %s Func : %s Line : %d %s", timeString, file, func, line, lastErrorAsString);
+        STRAUSS_LOG(eRecordDisable, "Error: [FAILED] Time:%.24s File : %s Func : %s Line : %d %s", timeString, file, func, line, lastErrorAsString);
         systemMessage_should_be_freed = 0;
     }
     else
@@ -173,15 +173,15 @@ void consolelogger_log_with_GetLastError(const char* file, const char* func, int
     userMessage = vprintf_alloc(format, args);
     if (userMessage == NULL)
     {
-        (void)printf("[FAILED] ");
-        (void)vprintf(format, args);
-        (void)printf("\n");
+        STRAUSS_LOG(eRecordDisable, "[FAILED] ");
+        STRAUSS_LOG(eRecordDisable, format, args);
+        STRAUSS_LOG(eRecordDisable, "\n");
         userMessage_should_be_freed = 0;
     }
     else
     {
         /*3. printf the system message(__FILE__, __LINE__ etc) + the last error + whatever the user wanted*/
-        (void)printf("%s %s\n", systemMessage, userMessage);
+        STRAUSS_LOG(eRecordDisable, "%s %s\n", systemMessage, userMessage);
         userMessage_should_be_freed = 1;
     }
 
@@ -224,22 +224,22 @@ void consolelogger_log(LOG_CATEGORY log_category, const char* file, const char* 
 //    switch (log_category)
 //    {
 //    case AZ_LOG_INFO:
-//        (void)printf("Info: ");
+//        STRAUSS_LOG(eRecordDisable, "Info: ");
 //        break;
 //    case AZ_LOG_ERROR:
-//        (void)printf("Error: Time:%.24s File:%s Func:%s Line:%d ", timeString, file, func, line);
+//       STRAUSS_LOG(eRecordDisable, "Error: Time:%.24s File:%s Func:%s Line:%d ", timeString, file, func, line);
 //        break;
 //    default:
 //        break;
 //    }
 //
-//    (void)vprintf(format, args);
+//    STRAUSS_LOG(eRecordDisable, format, args);
 //    va_end(args);
 //
 //    (void)log_category;
 //    if (options & LOG_LINE)
 //    {
-//        (void)printf("\r\n");
+//       STRAUSS_LOG(eRecordDisable, "\r\n");
 //    }
 }
 
