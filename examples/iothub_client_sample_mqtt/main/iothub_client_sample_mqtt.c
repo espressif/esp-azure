@@ -12,11 +12,18 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/shared_util_options.h"
-#include "iothubtransportmqtt.h"
 #include "iothub_client_options.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#if CONFIG_SAMPLE_MQTT_OVER_WEBSOCKET
+    #include "iothubtransportmqtt_websockets.h"
+    #define PROTOCOL MQTT_WebSocket_Protocol
+#else  // CONFIG_SAMPLE_MQTT_OVER_WEBSOCKET
+    #include "iothubtransportmqtt.h"
+    #define PROTOCOL MQTT_Protocol
+#endif  // !CONFIG_SAMPLE_MQTT_OVER_WEBSOCKET
 
 #ifdef MBED_BUILD_TIMESTAMP
     #define SET_TRUSTED_CERT_IN_SAMPLES
@@ -148,7 +155,7 @@ void iothub_client_sample_mqtt_run(void)
     }
     else
     {
-        if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, MQTT_Protocol)) == NULL)
+        if ((iotHubClientHandle = IoTHubClient_LL_CreateFromConnectionString(connectionString, PROTOCOL)) == NULL)
         {
             (void)printf("ERROR: iotHubClientHandle is NULL!\r\n");
         }
@@ -156,6 +163,12 @@ void iothub_client_sample_mqtt_run(void)
         {
             bool traceOn = true;
             IoTHubClient_LL_SetOption(iotHubClientHandle, OPTION_LOG_TRACE, &traceOn);
+
+#if CONFIG_SAMPLE_MQTT_OVER_WEBSOCKET
+            // MQTT over WebSocket requires TLS renegociation
+            bool enable = 1;
+            IoTHubDeviceClient_LL_SetOption(iotHubClientHandle, OPTION_SET_TLS_RENEGOTIATION, &enable);
+#endif // CONFIG_SAMPLE_MQTT_OVER_WEBSOCKET
 
             IoTHubClient_LL_SetConnectionStatusCallback(iotHubClientHandle, connection_status_callback, NULL);
             // Setting the Trusted Certificate.  This is only necessary on system with without

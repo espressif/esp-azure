@@ -12,10 +12,12 @@
 
 void initialize_sntp(void)
 {
-    printf("Initializing SNTP\n");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
+    if (!sntp_enabled()) {
+        printf("Initializing SNTP\n");
+        sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        sntp_setservername(0, "pool.ntp.org");
+        sntp_init();
+    }
 }
 
 static void obtain_time(void)

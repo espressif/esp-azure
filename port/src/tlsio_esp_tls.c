@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "esp_log.h"
 #include "tlsio_pal.h"
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/gballoc.h"
@@ -19,7 +20,9 @@
 #include "azure_c_shared_utility/singlylinkedlist.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/tlsio_options.h"
+#include "azure_c_shared_utility/shared_util_options.h"
 
+#include "esp_system.h"
 #include "esp_tls.h"
 
 typedef struct
@@ -124,7 +127,11 @@ static void internal_close(TLS_IO_INSTANCE* tls_io_instance)
     /* Codes_SRS_TLSIO_30_006: [ The phrase "enter TLSIO_STATE_EXT_CLOSED" means the adapter shall forcibly close any existing connections then call the on_io_close_complete function and pass the on_io_close_complete_context that was supplied in tlsio_close_async. ]*/
     /* Codes_SRS_TLSIO_30_051: [ On success, if the underlying TLS does not support asynchronous closing, then the adapter shall enter TLSIO_STATE_EXT_CLOSED immediately after entering TLSIO_STATE_EX_CLOSING. ]*/
 
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 0, 0))
     esp_tls_conn_delete(tls_io_instance->esp_tls_handle);
+#else
+    esp_tls_conn_destroy(tls_io_instance->esp_tls_handle);
+#endif
     while (process_and_destroy_head_message(tls_io_instance, IO_SEND_CANCELLED));
     // singlylinkedlist_destroy gets called in the main destroy
 
@@ -216,7 +223,11 @@ static CONCRETE_IO_HANDLE tlsio_esp_tls_create(void* io_create_parameters)
                 result->pending_transmission_list = NULL;
                 tlsio_options_initialize(&result->options, TLSIO_OPTION_BIT_TRUSTED_CERTS |
                 TLSIO_OPTION_BIT_x509_RSA_CERT | TLSIO_OPTION_BIT_x509_ECC_CERT);
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 0, 0))
                 result->esp_tls_handle = calloc(1, sizeof(esp_tls_t));
+#else
+                result->esp_tls_handle = esp_tls_init();
+#endif
                 if (result->esp_tls_handle == NULL)
                 {
                     /* Codes_SRS_TLSIO_30_011: [ If any resource allocation fails, tlsio_create shall return NULL. ]*/
@@ -618,17 +629,47 @@ static int tlsio_esp_tls_setoption(CONCRETE_IO_HANDLE tls_io, const char* option
     else
     {
         /* Codes_SRS_TLSIO_30_121: [ If the optionName parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
-        /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
-        TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
-        if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+        if (optionName == NULL)
         {
-            LogError("Failed tlsio_options_set");
+            LogError("NULL optionName");
             result = MU_FAILURE;
         }
         else
         {
-            result = 0;
+            /* Codes_SRS_TLSIO_30_122: [ If the value parameter is NULL, tlsio_esp_tls_setoption shall do nothing except log an error and return FAILURE. ]*/
+            if (value == NULL)
+            {
+                LogError("NULL value");
+                result = MU_FAILURE;
+            }
+            else
+            {
+                if (strcmp(optionName, OPTION_SET_TLS_RENEGOTIATION) == 0)
+                {
+                    /* esp_tls renegociation should be statically enabled in build config,
+                       menu Component config -> mbedTLS -> Support TLS renegotiation */
+#if CONFIG_MBEDTLS_SSL_RENEGOTIATION
+                    result = 0;
+#else
+                    #warning MBEDTLS_SSL_RENEGOTIATION should be enabled in menuconfig
+                    result = MU_FAILURE;
+#endif
+                }
+                else
+                {
+                    /* Codes_SRS_TLSIO_ESP_TLS_COMPACT_30_520 [ The tlsio_esp_tls_setoption shall do nothing and return FAILURE. ]*/
+                    TLSIO_OPTIONS_RESULT options_result = tlsio_options_set(&tls_io_instance->options, optionName, value);
+                    if (options_result != TLSIO_OPTIONS_RESULT_SUCCESS)
+                    {
+                        LogError("Failed tlsio_options_set");
+                        result = MU_FAILURE;
+                    }
+                    else
+                    {
+                        result = 0;
+                    }
+                }
+            }
         }
     }
     return result;

@@ -36,4 +36,10 @@ config MESSAGE_COUNT
         messages. If the message count is set as 0 then this example
         will send indefinite messages to the cloud.
 
+config SAMPLE_MQTT_OVER_WEBSOCKET
+    bool "MQTT over WebSocket"
+    default n
+    help
+        This option enables MQTT over WebSocket protocol, instead of raw MQTT.
+
 endmenu
