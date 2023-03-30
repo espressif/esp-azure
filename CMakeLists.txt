@@ -110,6 +110,7 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_security_factory.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_device_ll_client.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/iothub_security_factory.c"
+        "${AZURE_IOT_SDK}/provisioning_client/src/iothub_auth_client.c"
 	"${AZURE_IOT_SDK}/provisioning_client/adapters/hsm_client_data.c"
 	"${AZURE_IOT_SDK}/provisioning_client/adapters/hsm_client_tpm.c"
 	"${AZURE_IOT_SDK}/provisioning_client/src/prov_auth_client.c"
@@ -123,10 +124,6 @@ set (COMPONENT_SRCS
 	"${AZURE_IOT_SDK}/c-utility/src/azure_base32.c"
 	)
 
-if (CONFIG_DEVICE_COMMON_NAME)
-	list (APPEND COMPONENT_SRCS "${AZURE_IOT_SDK}/provisioning_client/src/iothub_auth_client.c")
-endif()
-
 set (COMPONENT_SUBMODULES "${AZURE_IOT_SDK}")
 
 #set(COMPONENT_PRIV_REQUIRES "mbedtls esp-tls main")
@@ -137,7 +134,8 @@ register_component()
 set_source_files_properties(
     ${AZURE_IOT_SDK}/iothub_client/src/iothubtransport_mqtt_common.c
     PROPERTIES COMPILE_FLAGS
-    -Wno-maybe-uninitialized)
+    -Wno-maybe-uninitialized
+)
 
 component_compile_options (
 	-Wno-unused-function
@@ -146,16 +144,13 @@ component_compile_options (
 	-Wno-unknown-pragmas
         -Wno-error=format=
         -Wno-error=char-subscripts
-	)
+)
 
 component_compile_definitions (
-    LOGGER_DISABLE_PAL        
-    USE_LWIP_SOCKET_FOR_AZURE_IOT
+	LOGGER_DISABLE_PAL
+	USE_LWIP_SOCKET_FOR_AZURE_IOT
 	HSM_TYPE_X509
 	HSM_TYPE_SAS_TOKEN
 	HSM_TYPE_SYMM_KEY
+	USE_PROV_MODULE
 )
-
-if (CONFIG_DEVICE_COMMON_NAME)
-	add_definitions(-DUSE_PROV_MODULE)
-endif()
